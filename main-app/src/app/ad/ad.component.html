@@ -1,0 +1,177 @@
+<div class="ad-page">
+  <!-- Body -->
+  <div class="ad-body">
+    <!-- Left Sidebar -->
+    <aside class="ad-sider">
+      <div class="ad-sider-section">
+        <div class="ad-sider-title">服务分类</div>
+        <div class="ad-sider-list">
+          <button
+            class="ad-sider-item"
+            *ngFor="let c of categories"
+            [class.active]="c === activeCategory"
+            (click)="selectCategory(c)"
+          >
+            {{ c }}
+          </button>
+        </div>
+      </div>
+
+      <div class="ad-sider-section">
+        <div class="ad-sider-title">筛选</div>
+
+        <label class="ad-field">
+          <span class="ad-field-label">区域</span>
+          <select class="ad-select" [(ngModel)]="region" (change)="applyFilters()">
+            <option *ngFor="let r of regions" [value]="r">{{ r }}</option>
+          </select>
+        </label>
+
+        <label class="ad-field">
+          <span class="ad-field-label">建议类型</span>
+          <select class="ad-select" [(ngModel)]="type" (change)="applyFilters()">
+            <option value="ALL">全部</option>
+            <option value="PERF">性能</option>
+            <option value="SEC">安全</option>
+            <option value="COST">成本</option>
+            <option value="BEST">最佳实践</option>
+          </select>
+        </label>
+
+        <label class="ad-field">
+          <span class="ad-field-label">仅看高优</span>
+          <input type="checkbox" [(ngModel)]="onlyHigh" (change)="applyFilters()" />
+        </label>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="ad-main">
+      <!-- Tabs -->
+      <div class="ad-tabs">
+        <button class="ad-tab" [class.active]="tab==='overview'" (click)="tab='overview'">
+          概览
+        </button>
+        <button class="ad-tab" [class.active]="tab==='recommend'" (click)="tab='recommend'">
+          建议
+        </button>
+        <button class="ad-tab" [class.active]="tab==='history'" (click)="tab='history'">
+          记录
+        </button>
+      </div>
+
+      <!-- Overview -->
+      <section class="ad-panel" *ngIf="tab==='overview'">
+        <div class="ad-panel-head">
+          <div class="ad-panel-title">概览</div>
+          <div class="ad-panel-sub">根据你的 API 使用情况与配置给出建议（示例数据）。</div>
+        </div>
+
+        <div class="ad-cards">
+          <div class="ad-card">
+            <div class="ad-card-k">建议总数</div>
+            <div class="ad-card-v">{{ stats.total }}</div>
+            <div class="ad-card-hint">当前筛选范围内</div>
+          </div>
+          <div class="ad-card">
+            <div class="ad-card-k">高优先级</div>
+            <div class="ad-card-v">{{ stats.high }}</div>
+            <div class="ad-card-hint">建议优先处理</div>
+          </div>
+          <div class="ad-card">
+            <div class="ad-card-k">涉及服务</div>
+            <div class="ad-card-v">{{ stats.services }}</div>
+            <div class="ad-card-hint">按分类聚合</div>
+          </div>
+          <div class="ad-card">
+            <div class="ad-card-k">命中关键词</div>
+            <div class="ad-card-v">{{ keyword ? 1 : 0 }}</div>
+            <div class="ad-card-hint">按搜索过滤</div>
+          </div>
+        </div>
+
+        <div class="ad-divider"></div>
+
+        <div class="ad-panel-title2">快速入口</div>
+        <div class="ad-quick">
+          <button class="ad-primary" (click)="tab='recommend'">查看建议</button>
+          <button class="ad-secondary" (click)="tab='history'">查看记录</button>
+        </div>
+      </section>
+
+      <!-- Recommend -->
+      <section class="ad-panel" *ngIf="tab==='recommend'">
+        <div class="ad-panel-head row">
+          <div>
+            <div class="ad-panel-title">建议列表</div>
+            <div class="ad-panel-sub">
+              {{ activeCategory }} · {{ region }} · {{ type === 'ALL' ? '全部类型' : type }}
+            </div>
+          </div>
+
+          <div class="ad-right-actions">
+            <button class="ad-secondary" (click)="export()">导出</button>
+            <button class="ad-primary" (click)="createTicket()">创建工单</button>
+          </div>
+        </div>
+
+        <div class="ad-table-wrap">
+          <table class="ad-table">
+            <thead>
+              <tr>
+                <th style="width: 90px;">优先级</th>
+                <th style="width: 120px;">类型</th>
+                <th style="width: 130px;">服务</th>
+                <th>建议</th>
+                <th style="width: 140px;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of viewList">
+                <td>
+                  <span class="pill" [class.pill-high]="item.priority==='HIGH'">
+                    {{ item.priority === 'HIGH' ? '高' : '中' }}
+                  </span>
+                </td>
+                <td>{{ typeLabel(item.type) }}</td>
+                <td>{{ item.service }}</td>
+                <td class="td-msg">
+                  <div class="msg-title">{{ item.title }}</div>
+                  <div class="msg-desc">{{ item.desc }}</div>
+                </td>
+                <td>
+                  <button class="ad-link" (click)="openDetail(item)">查看</button>
+                  <button class="ad-link" (click)="ignore(item)">忽略</button>
+                </td>
+              </tr>
+
+              <tr *ngIf="viewList.length === 0">
+                <td colspan="5" class="empty">暂无数据（调整筛选或搜索）。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- History -->
+      <section class="ad-panel" *ngIf="tab==='history'">
+        <div class="ad-panel-head">
+          <div class="ad-panel-title">处理记录</div>
+          <div class="ad-panel-sub">示例：记录导出、忽略、创建工单等行为。</div>
+        </div>
+
+        <div class="ad-history">
+          <div class="ad-h-item" *ngFor="let h of history">
+            <div class="ad-h-dot"></div>
+            <div class="ad-h-body">
+              <div class="ad-h-title">{{ h.title }}</div>
+              <div class="ad-h-sub">{{ h.time }}</div>
+            </div>
+          </div>
+
+          <div class="empty" *ngIf="history.length === 0">暂无记录</div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>

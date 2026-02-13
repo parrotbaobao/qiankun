@@ -1,0 +1,11 @@
+/* 简单样式以便在 demo 页面中展示 */
+.demo-section { margin-bottom: 24px; }
+.accordion .panel { border: 1px solid #e6e6e6; margin-bottom: 8px; border-radius: 4px; overflow: hidden; }
+.panel-title { width: 100%; text-align: left; padding: 8px 12px; background: #f7f7f7; border: none; cursor: pointer; font-weight: 600; }
+.panel-body { padding: 12px; background: white; }
+
+.tabs { border: 1px solid #e6e6e6; border-radius: 4px; }
+.tab-list { list-style: none; margin: 0; padding: 0; display: flex; background: #fafafa; border-bottom: 1px solid #e6e6e6; }
+.tab-list li { padding: 8px 12px; cursor: pointer; }
+.tab-list li.active { background: white; border-bottom: 2px solid #1890ff; font-weight: 600; }
+.tab-content { padding: 12px; }

@@ -1,0 +1,23 @@
+<h2>DevUI 示例页面</h2>
+
+<section class="demo-section">
+  <h3>Accordion（手风琴）示例</h3>
+  <p>示例说明：演示基本的折叠面板行为（参考 docs/accordion.md）。</p>
+  <div class="accordion">
+    <div *ngFor="let it of accordionItems; let i = index" class="panel">
+      <button class="panel-title" (click)="it.open = !it.open">{{ it.title }}</button>
+      <div class="panel-body" *ngIf="it.open">{{ it.content }}</div>
+    </div>
+  </div>
+</section>
+
+<section class="demo-section">
+  <h3>Tabs（页签）示例</h3>
+  <p>示例说明：使用 tabs 切换展示不同内容（参考 docs/tabs.md）。</p>
+  <div class="tabs">
+    <ul class="tab-list">
+      <li *ngFor="let t of tabs; let i = index" [class.active]="activeTab===i" (click)="setActive(i)">{{ t.title }}</li>
+    </ul>
+    <div class="tab-content">{{ tabs[activeTab].content }}</div>
+  </div>
+</section>

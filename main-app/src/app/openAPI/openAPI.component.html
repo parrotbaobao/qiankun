@@ -1,0 +1,170 @@
+<!-- openAPI.component.html（已把所有 as HTMLInputElement / as HTMLSelectElement 替换掉） -->
+
+<div class="oa-page">
+  <div class="oa-body">
+    <aside class="oa-sider">
+      <div class="oa-sider-group">
+        <div class="oa-sider-title">OpenAPI</div>
+        <button class="oa-sider-item active" type="button">概览</button>
+        <button class="oa-sider-item" type="button" (click)="jump('debug')">在线调试</button>
+        <button class="oa-sider-item" type="button" (click)="jump('sdk')">SDK</button>
+        <button class="oa-sider-item" type="button" (click)="jump('errorcode')">错误码</button>
+        <button class="oa-sider-item" type="button" (click)="jump('terraform')">Terraform</button>
+      </div>
+
+      <div class="oa-sider-group">
+        <div class="oa-sider-title">服务筛选</div>
+
+        <label class="oa-field">
+          <span class="oa-field-label">区域</span>
+          <select #regionSel class="oa-select" [value]="region" (change)="onRegion(regionSel.value)">
+            <option *ngFor="let r of regions" [value]="r">{{ r }}</option>
+          </select>
+        </label>
+
+        <label class="oa-field">
+          <span class="oa-field-label">服务</span>
+          <select #svcSel class="oa-select" [value]="service" (change)="onService(svcSel.value)">
+            <option *ngFor="let s of services" [value]="s">{{ s }}</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="oa-sider-foot">
+        <div class="oa-mini-k">当前选择</div>
+        <div class="oa-mini-v">{{ region }} · {{ service }}</div>
+      </div>
+    </aside>
+
+    <main class="oa-main">
+      <section class="oa-panel">
+        <div class="oa-panel-head">
+          <div>
+            <div class="oa-panel-title">OpenAPI 一站式能力概览</div>
+            <div class="oa-panel-sub">支持快速检索、可视化调试、帮助文档、代码示例等（示例 UI）。</div>
+          </div>
+
+          <div class="oa-actions">
+            <button class="oa-secondary" type="button" (click)="go('/openapi/search')">去检索</button>
+            <button class="oa-primary" type="button" (click)="go('/openapi/debug')">去调试</button>
+          </div>
+        </div>
+
+        <div class="oa-cards">
+          <div class="oa-card">
+            <div class="oa-card-k">API</div>
+            <div class="oa-card-v">{{ stats.apis }}</div>
+            <div class="oa-card-h">覆盖云服务开放 API</div>
+          </div>
+
+          <div class="oa-card">
+            <div class="oa-card-k">SDK</div>
+            <div class="oa-card-v">{{ stats.sdks }}</div>
+            <div class="oa-card-h">代码示例与 SDK 集成</div>
+          </div>
+
+          <div class="oa-card">
+            <div class="oa-card-k">错误码</div>
+            <div class="oa-card-v">{{ stats.errors }}</div>
+            <div class="oa-card-h">定位问题更快</div>
+          </div>
+
+          <div class="oa-card">
+            <div class="oa-card-k">当前区域</div>
+            <div class="oa-card-v">{{ region }}</div>
+            <div class="oa-card-h">调试/示例按区域切换</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="oa-panel">
+        <div class="oa-panel-title2">快速入口</div>
+
+        <div class="oa-grid">
+          <div class="oa-tile" (click)="go('/openapi/search')" role="button" tabindex="0">
+            <div class="oa-tile-title">API 检索</div>
+            <div class="oa-tile-desc">按服务/标签/关键字快速定位接口</div>
+            <div class="oa-tile-foot">进入 →</div>
+          </div>
+
+          <div class="oa-tile" (click)="go('/openapi/debug')" role="button" tabindex="0">
+            <div class="oa-tile-title">在线调试</div>
+            <div class="oa-tile-desc">可视化填写参数，一键发起请求</div>
+            <div class="oa-tile-foot">进入 →</div>
+          </div>
+
+          <div class="oa-tile" (click)="go('/openapi/sdk')" role="button" tabindex="0">
+            <div class="oa-tile-title">SDK & 示例</div>
+            <div class="oa-tile-desc">复制代码片段，快速集成到工程</div>
+            <div class="oa-tile-foot">进入 →</div>
+          </div>
+
+          <div class="oa-tile" (click)="go('/openapi/errorcode')" role="button" tabindex="0">
+            <div class="oa-tile-title">错误码</div>
+            <div class="oa-tile-desc">按错误码检索原因与处理建议</div>
+            <div class="oa-tile-foot">进入 →</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="oa-panel">
+        <div class="oa-panel-title2">使用指引</div>
+
+        <div class="oa-steps">
+          <div class="oa-step">
+            <div class="oa-step-no">1</div>
+            <div class="oa-step-body">
+              <div class="oa-step-title">选择服务与区域</div>
+              <div class="oa-step-desc">先确定目标服务（如 ECS/OBS）与 region。</div>
+            </div>
+          </div>
+
+          <div class="oa-step">
+            <div class="oa-step-no">2</div>
+            <div class="oa-step-body">
+              <div class="oa-step-title">检索 API</div>
+              <div class="oa-step-desc">输入关键词或从服务列表筛选。</div>
+            </div>
+          </div>
+
+          <div class="oa-step">
+            <div class="oa-step-no">3</div>
+            <div class="oa-step-body">
+              <div class="oa-step-title">在线调试</div>
+              <div class="oa-step-desc">填写参数/Headers，一键发送请求并查看响应。</div>
+            </div>
+          </div>
+
+          <div class="oa-step">
+            <div class="oa-step-no">4</div>
+            <div class="oa-step-body">
+              <div class="oa-step-title">复制示例与 SDK</div>
+              <div class="oa-step-desc">将示例代码/SDK 直接集成到你的项目。</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="oa-panel">
+        <div class="oa-panel-title2">资源与说明</div>
+
+        <div class="oa-list">
+          <div class="oa-li">
+            <div class="oa-li-title">平台能力说明</div>
+            <div class="oa-li-desc">检索、调试、文档、示例等能力入口。</div>
+          </div>
+
+          <div class="oa-li">
+            <div class="oa-li-title">鉴权（Token）</div>
+            <div class="oa-li-desc">调用 OpenAPI 通常需要 Token，按平台指引获取。</div>
+          </div>
+
+          <div class="oa-li">
+            <div class="oa-li-title">错误码排障</div>
+            <div class="oa-li-desc">通过错误码定位原因，结合建议快速修复。</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
