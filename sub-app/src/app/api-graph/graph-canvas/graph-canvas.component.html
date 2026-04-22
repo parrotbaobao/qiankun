@@ -1,0 +1,31 @@
+<div #graphContainer class="graph-container"></div>
+
+<div class="flow-node-template-layer">
+    <div *ngFor="let node of workflow?.nodes" #flowNodeTpl [attr.data-node-id]="node.id">
+        <div class="flow-start-node" *ngIf="node.type === NodeType.START">
+            <div class="flow-start-node__inner"></div>
+        </div>
+
+        <div class="flow-end-node" *ngIf="node.type === NodeType.END">
+            <div class="flow-end-node__inner"></div>
+        </div>
+
+        <div class="flow-condition-node" *ngIf="node.type === NodeType.CONDITION">
+            <div class="flow-condition-node__diamond"></div>
+        </div>
+
+        <div class="flow-placeholder-node" *ngIf="node.type === NodeType.PLACEHOLDER">
+            {{ getNodeSubText(node) }}
+        </div>
+
+        <div class="flow-connector-node" *ngIf="node.type === NodeType.CONNECTOR"></div>
+
+        <div class="flow-node-card" *ngIf="node.type === NodeType.API">
+            <div class="flow-node-card__top">
+                <div class="flow-node-card__title">{{ node.name || 'HTTP 请求' }}</div>
+                <span class="flow-node-card__method">{{ getNodeMethod(node) }}</span>
+            </div>
+            <div class="flow-node-card__sub">{{ getNodeSubText(node) }}</div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,21 @@
+<form dForm (dSubmit)="onSearch()">
+  <d-form-item>
+    <d-form-label>姓名</d-form-label>
+    <d-form-control>
+      <input dTextInput [(ngModel)]="name" name="name" placeholder="请输入姓名" />
+    </d-form-control>
+  </d-form-item>
+
+  <d-form-item>
+    <d-form-label>状态</d-form-label>
+    <d-form-control>
+      <d-select [options]="statusOptions" [(ngModel)]="status" name="status" filterKey="label" valueKey="value"
+        placeholder="请选择状态"></d-select>
+    </d-form-control>
+  </d-form-item>
+
+  <d-form-operation>
+    <d-button bsStyle="primary" dFormSubmit (btnClick)="onSearch()">查询</d-button>
+    <d-button bsStyle="common" dFormReset (btnClick)="onReset()">重置</d-button>
+  </d-form-operation>
+</form>

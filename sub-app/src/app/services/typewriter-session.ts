@@ -242,7 +242,6 @@ export class TypewriterSession {
 
   private onVisibilityChange = () => {
     const nowHidden = document.hidden;
-    console.log(nowHidden);
     if (nowHidden) {
       this.isPumping = false;
       this.wasHidden = true;

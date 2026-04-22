@@ -1,0 +1,46 @@
+.node-config-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-control {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.header-row, .param-row {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 5px;
+}
+
+.header-row input, .param-row input {
+  flex: 1;
+}
+
+.btn {
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.btn:hover {
+  background-color: #f0f0f0;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 11px;
+}

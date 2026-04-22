@@ -1,0 +1,86 @@
+<div class="form-submission">
+  <div class="form-header">
+    <h1>表单填写</h1>
+  </div>
+
+  <div class="form-content">
+    <!-- 错误提示 -->
+    <div class="error-message" *ngIf="error">
+      {{ error }}
+    </div>
+
+    <!-- 上传错误提示 -->
+    <div class="error-message" *ngIf="uploadError">
+      {{ uploadError }}
+    </div>
+
+    <!-- 加载状态 -->
+    <div class="loading-overlay" *ngIf="status === 'loading' || isUploading">
+      <div class="loading-spinner">加载中...</div>
+    </div>
+
+    <!-- 成功状态 -->
+    <div class="success-message" *ngIf="status === 'success'">
+      <div class="success-icon">✓</div>
+      <div class="success-text">表单提交成功！</div>
+    </div>
+
+    <!-- 表单内容 -->
+    <form *ngIf="status !== 'success'" class="form">
+      <!-- 标题 -->
+      <div class="form-item">
+        <label for="title">标题 *</label>
+        <input type="text" id="title" [(ngModel)]="formData.title" name="title" placeholder="请输入标题" class="form-input">
+      </div>
+
+      <!-- 描述 -->
+      <div class="form-item">
+        <label for="description">描述 *</label>
+        <textarea id="description" [(ngModel)]="formData.description" name="description" placeholder="请输入描述"
+          class="form-textarea" rows="4"></textarea>
+      </div>
+
+      <!-- 评审人（多选） -->
+      <div class="form-item">
+        <label>评审人</label>
+        <div class="checkbox-group">
+          <label class="checkbox-item" *ngFor="let reviewer of reviewers">
+            <input type="checkbox" [checked]="isReviewerSelected(reviewer)" (change)="toggleReviewer(reviewer, $event)">
+            {{ reviewer.name }}
+          </label>
+        </div>
+      </div>
+
+      <!-- 评审专家（单选） -->
+      <div class="form-item">
+        <label>评审专家</label>
+        <div class="radio-group">
+          <label class="radio-item" *ngFor="let reviewer of reviewers">
+            <input type="radio" name="expert" [checked]="formData.expert?.id === reviewer.id"
+              (change)="onExpertChange(reviewer)">
+            {{ reviewer.name }}
+          </label>
+        </div>
+      </div>
+
+      <!-- 附件上传 -->
+      <div class="form-item">
+        <label>附件</label>
+        <app-attachment-upload [(attachments)]="formData.attachments"
+          (uploadStatus)="onUploadStatus($event)"></app-attachment-upload>
+      </div>
+
+      <!-- 按钮组 -->
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" (click)="onSubmit()"
+          [disabled]="status === 'submitting' || isUploading">
+          {{ status === 'submitting' ? '提交中...' : '提交' }}
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="onCancel()"
+          [disabled]="status === 'submitting' || isUploading">
+          取消
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core'; // Angular 依赖注入
 import { HttpClient } from '@angular/common/http'; // HttpClient（当前文件里未使用，可删）
 import { fetchEventSource } from '@microsoft/fetch-event-source'; // SSE 客户端（基于 fetch）
 import { Observable, Subscriber } from 'rxjs'; // RxJS Observable，用于把流式输出暴露给组件订阅
-import { TypewriterOptions, TypewriterSession } from './typewriter-session';
+import { TypewriterOptions, TypewriterSession } from '../services/typewriter-session';
 
 
 

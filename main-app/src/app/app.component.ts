@@ -2,6 +2,7 @@ import { AfterViewInit, ChangeDetectorRef, Component, OnInit } from '@angular/co
 import { NavigationEnd, Router } from '@angular/router';
 import { registerMicroApps, start } from 'qiankun';
 import { filter } from 'rxjs';
+import { ApiService } from '../api.service';
 
 @Component({
   selector: 'app-root',
@@ -13,7 +14,7 @@ export class AppComponent implements AfterViewInit, OnInit {
   currentUrl = '';
   isAd = false;
   isInHome = false;
-  constructor(private router: Router, private cdr: ChangeDetectorRef) {
+  constructor(private router: Router, private cdr: ChangeDetectorRef, private apiService: ApiService) {
     this.currentUrl = this.router.url;
     this.router.events
       .subscribe((e) => {
@@ -46,6 +47,17 @@ export class AppComponent implements AfterViewInit, OnInit {
     //   this.isAd = false;
     //   this.isInHome = false;
     // }
+
+    // 模拟调用 API 服务
+    this.apiService.getUserById(1001).subscribe({
+      next: (response) => {
+        console.log('API 调用成功:', response);
+        console.log('用户信息:', response.data);
+      },
+      error: (error) => {
+        console.error('API 调用失败:', error);
+      }
+    });
   }
 
   ngAfterViewInit(): void {

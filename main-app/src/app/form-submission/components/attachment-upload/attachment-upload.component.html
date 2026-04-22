@@ -1,0 +1,48 @@
+<div class="attachment-upload">
+  <div 
+    class="upload-area" 
+    [class.dragging]="isDragging"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave()"
+    (drop)="onDrop($event)"
+  >
+    <input 
+      type="file" 
+      multiple 
+      class="file-input"
+      (change)="onFileChange($event)"
+      accept=".png,.jpg,.jpeg,.doc,.docx,.pdf"
+    />
+    <div class="upload-content">
+      <div class="upload-icon">📁</div>
+      <div class="upload-text">
+        <div>点击或拖拽文件到此处上传</div>
+        <div class="upload-hint">支持 png、word、pdf 格式，单个文件不超过 10MB</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="attachment-list" *ngIf="attachments.length > 0">
+    <div class="attachment-item" *ngFor="let attachment of attachments">
+      <div class="attachment-info">
+        <div class="attachment-icon">
+          <span *ngIf="getFileIcon(attachment.type) === 'image'">🖼️</span>
+          <span *ngIf="getFileIcon(attachment.type) === 'file-word'">📄</span>
+          <span *ngIf="getFileIcon(attachment.type) === 'file-pdf'">📄</span>
+          <span *ngIf="getFileIcon(attachment.type) === 'file'">📦</span>
+        </div>
+        <div class="attachment-details">
+          <div class="attachment-name">{{ attachment.name }}</div>
+          <div class="attachment-meta">{{ formatFileSize(attachment.size) }}</div>
+        </div>
+      </div>
+      <button 
+        class="remove-button" 
+        (click)="removeAttachment(attachment.id)"
+        title="删除附件"
+      >
+        ✕
+      </button>
+    </div>
+  </div>
+</div>

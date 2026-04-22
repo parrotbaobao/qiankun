@@ -1,25 +1,18 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { RouterModule, Routes } from '@angular/router';
+import { HttpClientModule } from '@angular/common/http';
 import { AppComponent } from './app.component';
 import { HomeComponent } from './home/home.component';
 import { HomeModule } from './home/home.module';
 import { AdModule } from './ad/ad.module';
 import { AdComponent } from './ad/ad.component';
-import { SubSppComponent } from './sub-app/sub-app.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { DevUIModule } from 'ng-devui';
 import { DvDemoModule } from './generated/devui-demo/dv-demo.module';
+import { FormSubmissionModule } from './form-submission/form-submission.module';
 
 const routes: Routes = [
-  {
-    path: 'sub-app',
-    component: SubSppComponent,
-    children: [
-      { path: '**', component: SubSppComponent }, // ← 关键：捕获 /sub-app/任意子路径
-    ],
-  },
-  { path: 'sub2-app2', component: SubSppComponent },
   { path: '', redirectTo: 'home', pathMatch: 'full' },
   { path: 'home', component: HomeComponent },
   {
@@ -35,6 +28,10 @@ const routes: Routes = [
     loadChildren: () => import('./ad/ad.module').then((m) => m.AdModule),
   },
 
+  {
+    path: 'form',
+    loadChildren: () => import('./form-submission/form-submission.module').then((m) => m.FormSubmissionModule),
+  },
   { path: '**', redirectTo: 'home' },
 ];
 
@@ -42,6 +39,7 @@ const routes: Routes = [
   declarations: [AppComponent],
   imports: [
     BrowserModule,
+    HttpClientModule,
     DevUIModule,
     DvDemoModule,
     BrowserAnimationsModule,
@@ -49,4 +47,4 @@ const routes: Routes = [
   ],
   bootstrap: [AppComponent],
 })
-export class AppModule {}
+export class AppModule { }

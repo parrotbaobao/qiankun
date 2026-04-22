@@ -5,6 +5,7 @@ import { AppComponent } from './app.component';
 import { AdComponent } from './ad/ad.component';
 import { HomeComponent } from './home/home.component';
 import { AiChatComponent } from './ai-chat/ai-chat.component';
+import { OrchestrationEditorComponent } from './api-graph/orchestration-editor/orchestration-editor.component';
 
 const routes: Routes = [
   {
@@ -13,8 +14,9 @@ const routes: Routes = [
   },
   { path: 'home', component: HomeComponent },
   { path: 'ai', component: AiChatComponent },
+  { path: 'orchestration', component: OrchestrationEditorComponent },
 
-  { path: '', redirectTo: 'home', pathMatch: 'full' },
+  { path: '', redirectTo: 'orchestration', pathMatch: 'full' },
   { path: '**', redirectTo: '', pathMatch: 'full' },
 ];
 
@@ -22,4 +24,4 @@ const routes: Routes = [
   imports: [RouterModule.forRoot(routes)],
   exports: [RouterModule],
 })
-export class AppRoutingModule {}
+export class AppRoutingModule { }

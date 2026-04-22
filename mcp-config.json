@@ -1,0 +1,41 @@
+{
+  "mcpServers": {
+    "devui-docs": {
+      "baseUrl": "http://localhost:3000",
+      "tools": [
+        {
+          "name": "readDocFile",
+          "description": "读取 qiankun/docs 文件夹中的 md 文件",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "fileName": {
+                "type": "string",
+                "description": "要读取的 md 文件名（不含 .md 后缀）"
+              }
+            },
+            "required": ["fileName"]
+          }
+        },
+        {
+          "name": "generateComponent",
+          "description": "根据 md 文件生成组件",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "fileName": {
+                "type": "string",
+                "description": "要读取的 md 文件名（不含 .md 后缀）"
+              },
+              "componentType": {
+                "type": "string",
+                "description": "组件类型（如 angular, react, vue 等）"
+              }
+            },
+            "required": ["fileName", "componentType"]
+          }
+        }
+      ]
+    }
+  }
+}

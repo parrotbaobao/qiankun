@@ -52,4 +52,3 @@ import { TabsModule } from 'ng-devui/tabs';
 | id       | `number\|string` | --    | 可选，用来标识 tab 的唯一值 | [基本用法](demo#basic-usage)      |
 | title    | `string`         | --    | 可选，页签的标题            | [基本用法](demo#basic-usage)      |
 | disabled | `boolean`        | false | 可选，页签是否不可用        | [不设置内容](demo#no-set-content) |
-解释

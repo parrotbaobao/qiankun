@@ -1,0 +1,16 @@
+<div class="node-palette">
+  <h3>Nodes</h3>
+
+  <div #paletteItem class="node-item" *ngFor="let item of paletteItems">
+    <div class="node-card" [class.is-condition]="item.type === 'condition'">
+      <div class="node-card-top">
+        <span class="node-card-title">{{ item.label }}</span>
+        <span *ngIf="item.method" class="node-card-method">{{ item.method }}</span>
+      </div>
+
+      <div class="node-card-sub">
+        {{ item.type === 'api' ? (item.templateKey || 'api-template') : 'branch-condition' }}
+      </div>
+    </div>
+  </div>
+</div>

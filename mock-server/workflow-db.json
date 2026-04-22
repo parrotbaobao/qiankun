@@ -1,0 +1,10 @@
+{
+  "workflows": [
+    {
+      "id": "workflow_1",
+      "name": "测试编排",
+      "nodes": [],
+      "edges": []
+    }
+  ]
+}
