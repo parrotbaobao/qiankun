@@ -2,7 +2,7 @@ import { AfterViewInit, ChangeDetectorRef, Component, OnInit } from '@angular/co
 import { NavigationEnd, Router } from '@angular/router';
 import { registerMicroApps, start } from 'qiankun';
 import { filter } from 'rxjs';
-import { ApiService } from '../api.service';
+import { ApiService } from './core/services/api.service';
 
 @Component({
   selector: 'app-root',
@@ -20,34 +20,8 @@ export class AppComponent implements AfterViewInit, OnInit {
       .subscribe((e) => {
         this.currentUrl = this.router.url;
       });
-    // window.addEventListener('hashchange', () => {
-    //   console.log('hash:', window.location.hash);
-    //   if (window.location.hash.includes('ad')) {
-    //     this.isAd = true;
-    //     this.isInHome = false;
-    //   }
-    //   else if (window.location.hash.includes('home')) {
-    //     this.isAd = false;
-    //     this.isInHome = true;
-    //   } else {
-    //     this.isAd = false;
-    //     this.isInHome = false;
-    //   }
-    //   this.cdr.detectChanges()
-    // });
   }
   ngOnInit(): void {
-    // if (window.location.hash.includes('home')) {
-    //   this.isAd = false;
-    //   this.isInHome = true;
-    // } else if (window.location.hash.includes('ad')) {
-    //   this.isAd = true;
-    //   this.isInHome = false;
-    // } else {
-    //   this.isAd = false;
-    //   this.isInHome = false;
-    // }
-
     // 模拟调用 API 服务
     this.apiService.getUserById(1001).subscribe({
       next: (response) => {
@@ -92,28 +66,18 @@ export class AppComponent implements AfterViewInit, OnInit {
   }
 
   goHostHome() {
-    // this.isAd = false;
-    // window.location.hash = '#/home';
     this.router.navigateByUrl('/home');
   }
 
   goHostAd() {
-    // this.isAd = false;
-    // window.location.hash = '#/ad';
-    this.router.navigateByUrl('/ad');
-
+    this.router.navigateByUrl('/cloud-advisor');
   }
-  goSubApp1() {
-    // this.isAd = true;
-    this.router.navigateByUrl('/sub-app');
 
-    // window.location.hash = '#/sub-app';
+  goSubApp1() {
+    this.router.navigateByUrl('/sub-app');
   }
 
   goSubApp2() {
-    // this.isAd = true;
     this.router.navigateByUrl('/sub2-app2');
-
-    // window.location.hash = '#/sub2-app2';
   }
 }

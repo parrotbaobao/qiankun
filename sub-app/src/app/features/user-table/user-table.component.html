@@ -1,0 +1,81 @@
+<div class="user-table-page">
+  <div class="page-container">
+    <div class="page-header">
+      <div>
+        <h2>用户数据管理</h2>
+        <p>支持搜索、部门筛选与分页浏览</p>
+      </div>
+      <div class="toolbar">
+        <input
+          type="text"
+          [placeholder]="searchPlaceholder"
+          [(ngModel)]="searchText"
+          (input)="onSearch(searchText)"
+          class="search-input"
+        />
+        <select
+          [(ngModel)]="departmentFilter"
+          (change)="onDepartmentChange()"
+          class="department-filter"
+        >
+          <option *ngFor="let dept of departments" [value]="dept">
+            {{ dept || allDepartmentsLabel }}
+          </option>
+        </select>
+        <button class="reset-btn" (click)="resetFilters()">重置</button>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>姓名</th>
+            <th>年龄</th>
+            <th>城市</th>
+            <th>部门</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of paginatedUsers">
+            <td>{{ user.id }}</td>
+            <td>{{ user.name }}</td>
+            <td>{{ user.age }}</td>
+            <td>{{ user.city }}</td>
+            <td>
+              <span class="dept-badge" [class]="'tag-' + getDepartmentColor(user.department)">
+                {{ user.department }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <button
+        class="page-btn"
+        [disabled]="pageIndex === 1"
+        (click)="pageIndex > 1 && onPageChange(pageIndex - 1, pageSize)"
+      >
+        上一页
+      </button>
+      <span class="page-info">第 {{ pageIndex }} 页，共 {{ totalPages }} 页</span>
+      <button
+        class="page-btn"
+        [disabled]="pageIndex >= totalPages"
+        (click)="pageIndex < totalPages && onPageChange(pageIndex + 1, pageSize)"
+      >
+        下一页
+      </button>
+      <select
+        class="page-size-select"
+        [(ngModel)]="pageSize"
+        (change)="onPageChange(1, pageSize)"
+      >
+        <option *ngFor="let s of pageSizeOptions" [value]="s">{{ s }} 条/页</option>
+      </select>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,48 @@
+<div class="upload-page">
+  <div class="upload-inner">
+    <header class="upload-header">
+      <h1 class="upload-title">{{ 'ad.pageTitle' | translate }}</h1>
+      <p class="upload-subtitle">支持多文件上传，实时进度反馈</p>
+    </header>
+
+    <div class="upload-zone">
+      <label class="upload-drop-area" for="file-input">
+        <div class="upload-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M12 15V3m0 0L8 7m4-4l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3 15v3a2 2 0 002 2h14a2 2 0 002-2v-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="upload-drop-text">拖拽文件到此处或 <em>点击选择</em></span>
+        <span class="upload-drop-hint">支持多文件同时上传</span>
+        <input id="file-input" class="upload-file-input" multiple type="file" (change)="onChange($event)">
+      </label>
+    </div>
+
+    <div class="progress-area" *ngIf="progress">
+      <div class="progress-header">
+        <span class="progress-label">{{ 'ad.uploadProgress' | translate }}</span>
+        <span class="progress-pct">{{ progress }}%</span>
+      </div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" [style.width.%]="progress"></div>
+      </div>
+      <button class="btn btn-danger btn-sm cancel-btn" type="button" (click)="cancel()" [disabled]="!uploadSub">
+        {{ 'ad.cancelButton' | translate }}
+      </button>
+    </div>
+
+    <div class="list-panel">
+      <div class="panel-header">
+        <span class="panel-title">文件列表</span>
+        <span class="panel-badge">虚拟滚动 · 万级数据</span>
+      </div>
+      <div id="app" class="list-container">
+        <div class="viewport" id="viewport">
+          <div class="phantom" id="phantom"></div>
+          <div class="list" id="list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

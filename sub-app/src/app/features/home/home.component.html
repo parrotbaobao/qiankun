@@ -1,0 +1,75 @@
+<div class="home-page">
+  <div class="home-inner">
+    <header class="home-header">
+      <div>
+        <h1 class="home-title">数据概览</h1>
+        <p class="home-subtitle">实时监控与报表导出</p>
+      </div>
+      <div class="home-header-actions">
+        <button class="btn btn-ghost" (click)="onDownload()">
+          <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><path d="M7.5 10V2m0 8l-3-3m3 3l3-3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12.5h11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+          下载图表
+        </button>
+        <button class="btn btn-primary" (click)="onExport()">
+          <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><path d="M2 8.5V12a.5.5 0 00.5.5h10a.5.5 0 00.5-.5V8.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M7.5 2v8m0-8L5 4.5m2.5-2.5L10 4.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          导出报表
+        </button>
+        <button class="btn btn-ghost" (click)="onClick()">
+          <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><path d="M8 2.5L13.5 7.5M13.5 7.5L8 12.5M13.5 7.5H1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          跳转
+        </button>
+      </div>
+    </header>
+
+    <div class="home-grid">
+      <div class="stat-card">
+        <span class="stat-label">总数据量</span>
+        <span class="stat-value">12,480</span>
+        <span class="stat-hint stat-hint--up">↑ 8.4% 较上周</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">今日新增</span>
+        <span class="stat-value">342</span>
+        <span class="stat-hint stat-hint--up">↑ 12.1% 较昨日</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">处理中</span>
+        <span class="stat-value">58</span>
+        <span class="stat-hint">实时更新</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">错误率</span>
+        <span class="stat-value stat-value--danger">0.3%</span>
+        <span class="stat-hint stat-hint--down">↓ 0.1% 较昨日</span>
+      </div>
+    </div>
+
+    <div class="chart-panel">
+      <div class="panel-header">
+        <span class="panel-title">趋势图表</span>
+      </div>
+      <div id="main" class="chart-area"></div>
+    </div>
+
+    <div class="table-panel">
+      <div class="panel-header">
+        <span class="panel-title">汇总数据</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>数量</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>2024-01-01</td><td>100</td></tr>
+            <tr><td>2024-01-02</td><td>100</td></tr>
+            <tr><td>2024-01-03</td><td>100</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

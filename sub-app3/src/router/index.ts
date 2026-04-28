@@ -4,7 +4,7 @@ const routes = [
   {
     path: '/ai',
     name: 'ai',
-    component: () => import('../components/aiChat.vue'),
+    component: () => import('../components/AiChat.vue'),
   },  {
     path: '',
     name: 'home',

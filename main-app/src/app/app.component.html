@@ -27,21 +27,13 @@
       >
         子应用2
       </button>
-      <button class="btn" [class.active]="isActive('/ad')" (click)="goHostAd()">
-        AD
+      <button class="btn" [class.active]="isActive('/cloud-advisor')" (click)="goHostAd()">
+        Cloud Advisor
       </button>
     </nav>
   </header>
   <router-outlet></router-outlet>
   <div id="container"></div>
   <main class="content">
-    <!-- 主应用内容 -->
-    <!-- <div *ngIf="isAd">
-      <app-ad></app-ad>
-    </div>
-    <div *ngIf="isInHome">
-     <app-home></app-home>
-    </div>-->
-    <!-- <div id="container"></div>  -->
   </main>
 </div>

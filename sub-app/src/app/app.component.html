@@ -1,1 +1,48 @@
-<router-outlet></router-outlet>
+<nav class="app-nav">
+  <div class="app-nav__brand">
+    <span class="app-nav__logo">◆</span>
+    <span class="app-nav__title">{{ 'app.title' | translate }}</span>
+  </div>
+
+  <ul class="app-nav__links">
+    <li>
+      <a class="app-nav__link" routerLink="/orchestration" routerLinkActive="app-nav__link--active">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 1L1 4.5v6L7.5 14 14 10.5v-6L7.5 1Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+        编排
+      </a>
+    </li>
+    <li>
+      <a class="app-nav__link" routerLink="/ai" routerLinkActive="app-nav__link--active">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 7.5h5M7.5 5v5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        AI 对话
+      </a>
+    </li>
+    <li>
+      <a class="app-nav__link" routerLink="/user-table" routerLinkActive="app-nav__link--active">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1.5" y="3.5" width="12" height="9" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 6.5h12" stroke="currentColor" stroke-width="1.2"/></svg>
+        用户数据
+      </a>
+    </li>
+    <li>
+      <a class="app-nav__link" routerLink="/upload" routerLinkActive="app-nav__link--active">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 10V2m0 0L4.5 5M7.5 2l3 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 11v1.5A.5.5 0 002.5 13h10a.5.5 0 00.5-.5V11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        上传
+      </a>
+    </li>
+    <li>
+      <a class="app-nav__link" routerLink="/home" routerLinkActive="app-nav__link--active">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 1.5L1.5 6v7h4V9h4v4h4V6L7.5 1.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+        首页
+      </a>
+    </li>
+  </ul>
+
+  <div class="app-nav__actions">
+    <button class="app-nav__lang-btn" [class.app-nav__lang-btn--active]="currentLang === 'zh'" (click)="changeLang('zh')">中</button>
+    <button class="app-nav__lang-btn" [class.app-nav__lang-btn--active]="currentLang === 'en'" (click)="changeLang('en')">EN</button>
+  </div>
+</nav>
+
+<main class="app-main">
+  <router-outlet></router-outlet>
+</main>

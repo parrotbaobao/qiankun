@@ -1,0 +1,15 @@
+{
+    "app.title": "Home",
+    "aiChat": {
+        "pageTitle": "AI Chat",
+        "messagePlaceholder": "Enter message...",
+        "sendButton": "Send",
+        "stopButton": "Stop",
+        "initialMessage": "Hello, I am a simple chat dialog."
+    },
+    "ad": {
+        "pageTitle": "Upload",
+        "uploadProgress": "Upload Progress:",
+        "cancelButton": "Cancel Upload"
+    }
+}

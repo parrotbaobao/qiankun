@@ -1,0 +1,69 @@
+<div class="editor-page">
+  <div class="editor-toolbar">
+    <div class="toolbar-left">
+      <div class="toolbar-brand">
+        <span class="toolbar-icon">◈</span>
+        <span class="toolbar-label">工作流编排</span>
+      </div>
+      <div class="toolbar-divider"></div>
+      <span class="workflow-name" *ngIf="workflow">{{ workflow.name }}</span>
+      <span class="workflow-id" *ngIf="workflow">#{{ workflow.id }}</span>
+    </div>
+    <div class="toolbar-actions">
+      <button class="btn btn-ghost btn-sm" type="button" (click)="resetWorkflow()" [disabled]="loading">
+        <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><path d="M2 7.5A5.5 5.5 0 1113 7.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M2 4v3.5H5.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        清空
+      </button>
+      <button class="btn btn-ghost btn-sm" type="button" (click)="loadWorkflow()" [disabled]="loading">
+        <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><path d="M2 8.5V12a.5.5 0 00.5.5h10a.5.5 0 00.5-.5V8.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M7.5 2v8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M5 8l2.5 2.5L10 8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        回显
+      </button>
+      <button class="btn btn-primary btn-sm" type="button" (click)="saveWorkflow()" [disabled]="loading">
+        <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><path d="M3 2.5h7.5L12.5 5V12a.5.5 0 01-.5.5H3a.5.5 0 01-.5-.5V3a.5.5 0 01.5-.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><rect x="5" y="2.5" width="5" height="3" rx="0.5" stroke="currentColor" stroke-width="1.2"/><path d="M4.5 8.5h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        保存
+      </button>
+    </div>
+  </div>
+
+  <div class="editor-body">
+    <app-node-palette [graph]="graph" [workflow]="workflow"
+      (nodeDropRequested)="onNodeDropRequested($event)"></app-node-palette>
+
+    <app-graph-canvas
+      class="editor-canvas"
+      [workflow]="workflow"
+      (graphReady)="onGraphReady($event)"
+      (nodeSelected)="onNodeSelected($event)"
+      (edgeCreated)="onEdgeCreated($event)"></app-graph-canvas>
+
+    <aside class="right-panel">
+      <div class="right-panel-header">
+        <span class="right-panel-title">节点信息</span>
+      </div>
+
+      <div class="right-panel-body">
+        <ng-container *ngIf="selectedNode; else emptyState">
+          <div class="node-info-row">
+            <span class="node-info-label">ID</span>
+            <span class="node-info-value mono">{{ selectedNode.id }}</span>
+          </div>
+          <div class="node-info-row">
+            <span class="node-info-label">名称</span>
+            <span class="node-info-value">{{ selectedNode.name }}</span>
+          </div>
+          <div class="node-info-row">
+            <span class="node-info-label">类型</span>
+            <span class="node-type-badge">{{ selectedNode.type }}</span>
+          </div>
+        </ng-container>
+
+        <ng-template #emptyState>
+          <div class="empty-state">
+            <svg width="32" height="32" viewBox="0 0 15 15" fill="none"><path d="M7.5 1L1 4.5v6L7.5 14 14 10.5v-6L7.5 1Z" stroke="currentColor" stroke-width="1" stroke-linejoin="round" opacity="0.4"/></svg>
+            <p>点击画布中的节点<br>查看详细信息</p>
+          </div>
+        </ng-template>
+      </div>
+    </aside>
+  </div>
+</div>

@@ -1,0 +1,216 @@
+:host {
+  display: block;
+}
+
+.upload-page {
+  min-height: 100%;
+  padding: 28px 24px;
+  background: var(--color-bg);
+}
+
+.upload-inner {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.upload-header {
+  margin-bottom: 4px;
+}
+
+.upload-title {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+
+.upload-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+/* drop zone */
+.upload-zone {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.upload-drop-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 24px;
+  cursor: pointer;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  margin: 12px;
+  transition: border-color 0.2s, background 0.2s;
+
+  &:hover {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+
+    .upload-icon { color: var(--color-primary); }
+  }
+}
+
+.upload-icon {
+  color: var(--color-text-muted);
+  transition: color 0.2s;
+}
+
+.upload-drop-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+
+  em {
+    font-style: normal;
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
+.upload-drop-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.upload-file-input {
+  display: none;
+}
+
+/* progress */
+.progress-area {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow-xs);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.progress-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.progress-pct {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+}
+
+.progress-bar-track {
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.cancel-btn {
+  align-self: flex-end;
+}
+
+/* list panel */
+.list-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.panel-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.list-container {
+  padding: 12px;
+}
+
+.viewport {
+  width: 100%;
+  height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  position: relative;
+  background: var(--color-bg-subtle);
+
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 999px; }
+}
+
+.phantom {
+  width: 100%;
+}
+
+.list {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.item {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 13px;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+
+  &:hover { background: var(--color-primary-light); }
+}

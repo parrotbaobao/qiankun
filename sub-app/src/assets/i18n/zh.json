@@ -1,0 +1,15 @@
+{
+    "app.title": "首页",
+    "aiChat": {
+        "pageTitle": "AI 聊天",
+        "messagePlaceholder": "输入消息...",
+        "sendButton": "发送",
+        "stopButton": "停止",
+        "initialMessage": "你好，我是简单聊天对话框。"
+    },
+    "ad": {
+        "pageTitle": "上传",
+        "uploadProgress": "上传进度：",
+        "cancelButton": "取消上传"
+    }
+}

@@ -1,0 +1,102 @@
+<div class="node-config-panel" *ngIf="selectedNode">
+  <div class="config-panel-header">
+    <span class="config-panel-title">节点配置</span>
+  </div>
+
+  <div class="config-panel-body">
+    <form [formGroup]="nodeForm">
+      <div class="form-group">
+        <label class="form-label">节点名称</label>
+        <input type="text" formControlName="name" class="form-control">
+      </div>
+
+      <ng-container *ngIf="selectedNode.type === 'api'">
+        <div class="form-group">
+          <label class="form-label">HTTP 方法</label>
+          <select formControlName="method" class="form-control">
+            <option *ngFor="let method of httpMethods" [value]="method">{{ method }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">请求 URL</label>
+          <input type="text" formControlName="url" class="form-control" placeholder="https://api.example.com/path">
+        </div>
+
+        <div class="form-section">
+          <span class="form-section-title">请求头</span>
+          <div formArrayName="headers">
+            <div *ngFor="let header of getHeaders().controls; let i = index" [formGroupName]="i" class="kv-row">
+              <input type="text" formControlName="key" placeholder="Key" class="form-control">
+              <input type="text" formControlName="value" placeholder="Value" class="form-control">
+              <button type="button" (click)="removeHeader(i)" class="btn-remove">✕</button>
+            </div>
+            <button type="button" (click)="addHeader()" class="btn-add">+ 添加请求头</button>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <span class="form-section-title">查询参数</span>
+          <div formArrayName="params">
+            <div *ngFor="let param of getParams().controls; let i = index" [formGroupName]="i" class="kv-row">
+              <input type="text" formControlName="key" placeholder="Key" class="form-control">
+              <input type="text" formControlName="value" placeholder="Value" class="form-control">
+              <button type="button" (click)="removeParam(i)" class="btn-remove">✕</button>
+            </div>
+            <button type="button" (click)="addParam()" class="btn-add">+ 添加参数</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">请求体</label>
+          <textarea formControlName="body" class="form-control" rows="5" placeholder='{"key": "value"}'></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mock 响应</label>
+          <textarea formControlName="mockResponse" class="form-control" rows="5" placeholder='{"code": 0, "data": {}}'></textarea>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="selectedNode.type === 'condition'">
+        <div class="form-group">
+          <label class="form-label">上游 API 节点</label>
+          <select formControlName="sourceNodeId" class="form-control">
+            <option *ngFor="let node of upstreamApiNodes" [value]="node.id">{{ node.name }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">字段路径</label>
+          <input type="text" formControlName="fieldPath" class="form-control" placeholder="e.g. data.age">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">比较运算符</label>
+          <select formControlName="operator" class="form-control">
+            <option *ngFor="let operator of operators" [value]="operator">{{ operator }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">比较值</label>
+          <input type="text" formControlName="compareValue" class="form-control">
+        </div>
+      </ng-container>
+    </form>
+  </div>
+</div>
+
+<div class="node-config-panel" *ngIf="!selectedNode">
+  <div class="config-panel-header">
+    <span class="config-panel-title">节点配置</span>
+  </div>
+  <div class="config-panel-body">
+    <div class="empty-state">
+      <svg width="28" height="28" viewBox="0 0 15 15" fill="none">
+        <path d="M7.5 1L1 4.5v6L7.5 14 14 10.5v-6L7.5 1Z" stroke="currentColor" stroke-width="1" stroke-linejoin="round" opacity="0.35"/>
+      </svg>
+      <p>选择一个节点<br>开始配置</p>
+    </div>
+  </div>
+</div>
