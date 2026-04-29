@@ -1,4 +1,14 @@
 {
+    "sdk": {
+        "title": "SDK 中心",
+        "subtitle": "下载并使用华为云官方 SDK，快速集成云服务",
+        "language": "编程语言",
+        "docs": "文档",
+        "install": "安装命令",
+        "copy": "复制",
+        "copied": "已复制",
+        "changelog": "最新更新"
+    },
     "app.title": "首页",
     "aiChat": {
         "pageTitle": "AI 聊天",

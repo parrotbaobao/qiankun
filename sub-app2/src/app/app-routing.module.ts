@@ -1,9 +1,11 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { APP_BASE_HREF } from '@angular/common';
-import { AppComponent } from './app.component';
+import { ErrorCenterComponent } from './features/error-center/error-center.component';
 
-const routes: Routes = [{ path: '', component: AppComponent }];
+const routes: Routes = [
+  { path: '', component: ErrorCenterComponent },
+  { path: '**', redirectTo: '' },
+];
 
 @NgModule({
   imports: [RouterModule.forRoot(routes)],

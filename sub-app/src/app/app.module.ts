@@ -1,5 +1,7 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
+import { MfeAgent } from '@your-org/mfe-state';
+import { PORTAL_AGENT } from './core/portal-agent.token';
 import { TranslateModule, provideTranslateLoader } from '@ngx-translate/core';
 import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { AppRoutingModule } from './app-routing.module';
@@ -45,6 +47,10 @@ import { HomeModule } from './features/home/home.module';
     {
       provide: APP_BASE_HREF,
       useValue: (window as any).__POWERED_BY_QIANKUN__ ? '/sub-app' : '/',
+    },
+    {
+      provide: PORTAL_AGENT,
+      useFactory: () => MfeAgent.getInstance(),
     },
     OrchestrationService,
   ],

@@ -1,74 +1,70 @@
-import { AfterViewInit, Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
-import * as echarts from 'echarts';
+import { Component, OnInit } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { TranslateService } from '@ngx-translate/core';
+
+interface SdkPackage {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  descriptionEn: string;
+  maven: string | null;
+  pip: string | null;
+  go: string | null;
+  npm: string | null;
+  githubUrl: string;
+  docUrl: string;
+  publishedAt: string;
+  changelog: string[];
+  changelogEn: string[];
+}
+
+interface SdkGroup {
+  lang: string;
+  icon: string;
+  packages: SdkPackage[];
+}
 
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
-  styleUrls: ['./home.component.scss']
+  styleUrls: ['./home.component.scss'],
 })
-export class HomeComponent implements OnInit, AfterViewInit {
-  public chartDom: HTMLElement | null | undefined;
-  public myChart: any;
-  public option = {
-    xAxis: {
-      type: 'category',
-      data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    },
-    yAxis: {
-      type: 'value'
-    },
-    series: [
-      {
-        data: [120, 200, 150, 80, 70, 110, 130],
-        type: 'bar'
-      }
-    ]
-  };
+export class HomeComponent implements OnInit {
+  sdkGroups: SdkGroup[] = [];
+  activeLang = 'Java';
+  loading = true;
+  copied = '';
 
-
-  constructor(private router: Router) {
-
-  }
-
-  ngAfterViewInit(): void {
-    this.chartDom = document.getElementById('main');
-    this.myChart = echarts.init(this.chartDom)
-    this.option && this.myChart.setOption(this.option);
-  }
+  constructor(private http: HttpClient, public translate: TranslateService) {}
 
   ngOnInit(): void {
-  }
-
-  onDownload(): void {
-    // chart 是 echarts.init(dom) 返回的实例
-    const dataURL = this.myChart.getDataURL({
-      type: 'png',        // 'png' | 'jpeg'
-      pixelRatio: 2,      // 放大倍数，提高清晰度
-      backgroundColor: '#fff', // 背景色（不传则透明/继承）
-      // excludeComponents: ['toolbox'] // 可选：排除某些组件
+    this.http.get<{ code: number; data: SdkGroup[] }>('/api/sdks').subscribe({
+      next: (res) => { this.sdkGroups = res.data; this.loading = false; },
+      error: () => { this.loading = false; },
     });
-
-    const a = document.createElement('a');
-    a.style.display = "none"
-    a.href = dataURL;
-    a.download = 'chart.png';
-    a.click();
   }
 
-  public async onExport() {
-    const res = await fetch("/api/export/excel");
-    const bolb = await res.blob(); // 解析成二进制数据
-    const url = URL.createObjectURL(bolb); // 根据域名创建url
-    console.log(url)
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "name.xlsx";
-    a.click();
-    URL.revokeObjectURL(url); // 注销/释放之前 URL.createObjectURL(blob) 生成的那个 blob: 临时地址
+  get activeGroup(): SdkGroup | undefined {
+    return this.sdkGroups.find(g => g.lang === this.activeLang);
   }
 
-  public onClick() {
-    this.router.navigateByUrl('/ad')
+  getInstallCmd(pkg: SdkPackage): string {
+    return pkg.pip || pkg.go || pkg.npm || pkg.maven || '';
+  }
+
+  getChangelog(pkg: SdkPackage): string[] {
+    return this.translate.currentLang === 'en' ? pkg.changelogEn : pkg.changelog;
+  }
+
+  getDesc(pkg: SdkPackage): string {
+    return this.translate.currentLang === 'en' ? pkg.descriptionEn : pkg.description;
+  }
+
+  copy(text: string, id: string): void {
+    navigator.clipboard.writeText(text).then(() => {
+      this.copied = id;
+      setTimeout(() => { this.copied = ''; }, 2000);
+    });
   }
 }

@@ -21,6 +21,7 @@
     "@microsoft/fetch-event-source": "^2.0.1",
     "@ngx-translate/core": "^17.0.0",
     "@ngx-translate/http-loader": "^17.0.0",
+    "@your-org/mfe-state": "file:../mfe-state/your-org-mfe-state-0.1.0.tgz",
     "@your-org/my-shared-utils": "file:../my-shared-utils/your-org-my-shared-utils-0.0.1.tgz",
     "echarts": "^6.0.0",
     "mxgraph": "^4.2.2",

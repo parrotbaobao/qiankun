@@ -1,0 +1,16 @@
+{
+  "error": {
+    "title": "Error Code Center",
+    "subtitle": "Query HuaweiCloud API error codes and solutions",
+    "search": "Search error code or description",
+    "service": "Service",
+    "allServices": "All Services",
+    "code": "Error Code",
+    "httpStatus": "HTTP Status",
+    "description": "Description",
+    "solution": "Solution",
+    "total": "{{count}} results",
+    "empty": "No matching error codes found",
+    "loading": "Loading..."
+  }
+}

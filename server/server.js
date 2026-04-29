@@ -2,18 +2,28 @@ const express = require("express");
 const path = require("path");
 const { exportExcelHandler } = require("./route/exportExcel");
 const { uploadMiddleware, uploadHandler, UPLOAD_DIR } = require("./route/upload");
+const { sdkHandler } = require("./route/sdk");
+const { getServicesHandler, getErrorsHandler } = require("./route/errors");
 
 const app = express();
-const PORT = 8080;
+const PORT = 3100;
+
+app.use(express.json());
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
 
 const MAIN_DIST = path.join(__dirname, '..', 'main-app', 'dist', 'main-app');
 const APP1_DIST = path.join(__dirname, '..', 'sub-app', 'dist', 'sub-app');
 const APP2_DIST = path.join(__dirname, '..', 'sub-app2', 'dist', 'sub-app2');
 
 app.get("/api/export/excel", exportExcelHandler);
-
-// 上传接口：字段名必须叫 file（对应 upload.single(“file”)）
 app.post("/api/upload", uploadMiddleware, uploadHandler);
+app.get("/api/sdks", sdkHandler);
+app.get("/api/errors/services", getServicesHandler);
+app.get("/api/errors", getErrorsHandler);
 
 app.use("/uploads", express.static(UPLOAD_DIR, { index: false }));
 

@@ -6,34 +6,16 @@
     </div>
 
     <nav class="nav">
-      <button
-        class="btn"
-        [class.active]="isActive('/home')"
-        (click)="goHostHome()"
-      >
-        主应用
-      </button>
-      <button
-        class="btn"
-        [class.active]="isActive('/sub-app')"
-        (click)="goSubApp1()"
-      >
-        子应用1
-      </button>
-      <button
-        class="btn"
-        [class.active]="isActive('/sub2-app2')"
-        (click)="goSubApp2()"
-      >
-        子应用2
-      </button>
-      <button class="btn" [class.active]="isActive('/cloud-advisor')" (click)="goHostAd()">
-        Cloud Advisor
-      </button>
+      <button class="btn" [class.active]="isActive('/home')" (click)="goHostHome()">主应用</button>
+      <button class="btn" [class.active]="isActive('/sub-app')" (click)="goSubApp1()">子应用1</button>
+      <button class="btn" [class.active]="isActive('/sub2-app2')" (click)="goSubApp2()">子应用2</button>
+      <button class="btn" [class.active]="isActive('/cloud-advisor')" (click)="goHostAd()">Cloud Advisor</button>
     </nav>
   </header>
+
+  <!-- Angular 自身路由内容（主应用页面） -->
   <router-outlet></router-outlet>
+
+  <!-- qiankun 子应用挂载点 -->
   <div id="container"></div>
-  <main class="content">
-  </main>
 </div>

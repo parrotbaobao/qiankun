@@ -1,4 +1,14 @@
 {
+    "sdk": {
+        "title": "SDK Center",
+        "subtitle": "Download and use official HuaweiCloud SDKs to integrate cloud services quickly",
+        "language": "Language",
+        "docs": "Docs",
+        "install": "Install",
+        "copy": "Copy",
+        "copied": "Copied",
+        "changelog": "Latest Updates"
+    },
     "app.title": "Home",
     "aiChat": {
         "pageTitle": "AI Chat",

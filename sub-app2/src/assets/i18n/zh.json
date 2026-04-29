@@ -1,0 +1,16 @@
+{
+  "error": {
+    "title": "错误码中心",
+    "subtitle": "查询华为云 API 错误码及解决方案",
+    "search": "搜索错误码或描述",
+    "service": "所属服务",
+    "allServices": "全部服务",
+    "code": "错误码",
+    "httpStatus": "HTTP 状态码",
+    "description": "错误描述",
+    "solution": "解决方案",
+    "total": "共 {{count}} 条",
+    "empty": "暂无匹配的错误码",
+    "loading": "加载中..."
+  }
+}

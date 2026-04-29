@@ -5,11 +5,12 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { DevUIModule } from 'ng-devui';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
+import { MicroAppContainerComponent } from './micro-app-container.component';
 import { HomeModule } from './features/home/home.module';
 import { ApiService } from './core/services/api.service';
 
 @NgModule({
-  declarations: [AppComponent],
+  declarations: [AppComponent, MicroAppContainerComponent],
   imports: [
     BrowserModule,
     HttpClientModule,

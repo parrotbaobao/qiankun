@@ -1,0 +1,97 @@
+<div class="ec-page">
+  <!-- Header -->
+  <div class="ec-header">
+    <div>
+      <h1 class="ec-header__title">{{ 'error.title' | translate }}</h1>
+      <p class="ec-header__sub">{{ 'error.subtitle' | translate }}</p>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="ec-toolbar">
+    <div class="search-wrap">
+      <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input
+        class="search-input"
+        type="text"
+        [(ngModel)]="keyword"
+        (ngModelChange)="onKeywordChange($event)"
+        [placeholder]="'error.search' | translate"
+      />
+    </div>
+
+    <select class="service-select" [(ngModel)]="selectedService" (ngModelChange)="onServiceChange()">
+      <option value="">{{ 'error.allServices' | translate }}</option>
+      <option *ngFor="let s of services" [value]="s">{{ s }}</option>
+    </select>
+
+    <span class="total-badge" *ngIf="!loading">
+      {{ 'error.total' | translate: { count: total } }}
+    </span>
+  </div>
+
+  <!-- Table -->
+  <div class="ec-table-wrap">
+    <div *ngIf="loading" class="ec-loading">
+      <div class="spinner"></div>
+      <span>{{ 'error.loading' | translate }}</span>
+    </div>
+
+    <table class="ec-table" *ngIf="!loading">
+      <thead>
+        <tr>
+          <th>{{ 'error.code' | translate }}</th>
+          <th>{{ 'error.service' | translate }}</th>
+          <th>{{ 'error.httpStatus' | translate }}</th>
+          <th>{{ 'error.description' | translate }}</th>
+          <th style="width: 36px"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-container *ngFor="let item of errors">
+          <tr class="ec-row" [class.ec-row--expanded]="expandedCode === item.code" (click)="toggleExpand(item.code)">
+            <td>
+              <code class="error-code">{{ item.code }}</code>
+            </td>
+            <td>
+              <span class="service-tag">{{ item.service }}</span>
+            </td>
+            <td>
+              <span class="http-status" [ngClass]="statusClass(item.httpStatus)">
+                {{ item.httpStatus }}
+              </span>
+            </td>
+            <td class="desc-cell">{{ getDesc(item) }}</td>
+            <td class="expand-cell">
+              <svg class="chevron" [class.chevron--open]="expandedCode === item.code" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </td>
+          </tr>
+          <tr class="solution-row" *ngIf="expandedCode === item.code">
+            <td colspan="5">
+              <div class="solution-body">
+                <span class="solution-label">{{ 'error.solution' | translate }}</span>
+                <p class="solution-text">{{ getSolution(item) }}</p>
+              </div>
+            </td>
+          </tr>
+        </ng-container>
+
+        <tr *ngIf="errors.length === 0">
+          <td colspan="5" class="empty-cell">{{ 'error.empty' | translate }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="ec-pagination" *ngIf="totalPages > 1">
+    <button class="page-btn" [disabled]="page === 1" (click)="onPageChange(page - 1)">‹</button>
+    <button
+      *ngFor="let p of pages"
+      class="page-btn"
+      [class.page-btn--active]="p === page"
+      (click)="onPageChange(p)"
+    >{{ p }}</button>
+    <button class="page-btn" [disabled]="page === totalPages" (click)="onPageChange(page + 1)">›</button>
+  </div>
+</div>

@@ -1,0 +1,25 @@
+{
+  "name": "@your-org/mfe-state",
+  "version": "0.1.0",
+  "description": "qiankun 主子应用全局状态通信封装（主题、语言、用户信息、当前产品）",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "qiankun": ">=2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "qiankun": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "typescript": "^5.1.0"
+  }
+}
