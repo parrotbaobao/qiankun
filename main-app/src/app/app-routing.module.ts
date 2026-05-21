@@ -1,16 +1,20 @@
 import { NgModule } from '@angular/core';
-import { RouterModule, Routes } from '@angular/router';
+import { RouterModule, Routes, UrlMatcher } from '@angular/router';
 import { HomeComponent } from './features/home/home.component';
 import { MicroAppContainerComponent } from './micro-app-container.component';
 
+
+const MICRO_APPS = ['sub1-app', 'sub2-app2', 'sub-app3'];
+
+const microAppMatcher: UrlMatcher = (segments) => {
+  const first = segments[0]?.path;
+  return first && MICRO_APPS.includes(first) ? { consumed: segments } : null;
+};
+
+// routes 里就一条
 const routes: Routes = [
-  { path: '', redirectTo: 'home', pathMatch: 'full' },
+  { matcher: microAppMatcher, component: MicroAppContainerComponent },
   { path: 'home', component: HomeComponent },
-  // 子应用路径：Angular 不渲染内容，qiankun 负责填充 #container
-  { path: 'sub-app', component: MicroAppContainerComponent },
-  { path: 'sub-app/**', component: MicroAppContainerComponent },
-  { path: 'sub2-app2', component: MicroAppContainerComponent },
-  { path: 'sub2-app2/**', component: MicroAppContainerComponent },
   {
     path: 'cloud-advisor',
     loadChildren: () =>
@@ -26,6 +30,8 @@ const routes: Routes = [
     loadChildren: () =>
       import('./features/form-submission/form-submission.module').then((m) => m.FormSubmissionModule),
   },
+
+  { path: '', redirectTo: 'home', pathMatch: 'full' },
   { path: '**', redirectTo: 'home' },
 ];
 
@@ -33,4 +39,4 @@ const routes: Routes = [
   imports: [RouterModule.forRoot(routes)],
   exports: [RouterModule],
 })
-export class AppRoutingModule {}
+export class AppRoutingModule { }

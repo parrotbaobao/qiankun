@@ -8,8 +8,8 @@ module.exports = {
     },
   },
   output: {
-    library: `${appName}-name`,
+    library: `${appName}-[name]`,
     libraryTarget: 'umd',
-    chunkLoadingGlobal: `webpackJsonp_${appName}`, // webpack 5 需要把 jsonpFunction 替换成 chunkLoadingGlobal
+    chunkLoadingGlobal: `webpackJsonp_${appName}`,
   },
 };

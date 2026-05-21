@@ -1,5 +1,4 @@
 import '../public-path';
-import 'zone.js';
 
 import { NgZone } from '@angular/core';
 import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
@@ -30,7 +29,7 @@ const lifecycles = singleSpaAngular({
     singleSpaPropsSubject.next(singleSpaProps);
     return platformBrowserDynamic(getSingleSpaExtraProviders()).bootstrapModule(AppModule);
   },
-  template: '<sub-root />',
+  template: '<sub-root></sub-root>',
   NgZone,
 });
 
@@ -39,6 +38,20 @@ export const bootstrap = lifecycles.bootstrap;
 type LifecycleFn = (props: Record<string, unknown>) => Promise<void>;
 
 export const mount = (props: Record<string, unknown>) => {
+  // single-spa-angular's default domElementGetter appends to document.body.
+  // Pre-create the element inside qiankun's container so it is found first,
+  // making Angular mount inside the container (required for experimentalStyleIsolation).
+  const raw = (props as Record<string, unknown>)['container'] ?? '#container';
+  const containerEl =
+    typeof raw === 'string' ? document.querySelector(raw as string) : (raw as Element);
+  if (containerEl) {
+    const sspaId = 'single-spa-application:sub1-app';
+    if (!document.getElementById(sspaId)) {
+      const mountDiv = document.createElement('div');
+      mountDiv.id = sspaId;
+      containerEl.appendChild(mountDiv);
+    }
+  }
   return (lifecycles.mount as LifecycleFn)(props);
 };
 

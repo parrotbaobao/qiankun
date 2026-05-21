@@ -6,18 +6,13 @@ import { TranslateModule } from '@ngx-translate/core';
 
 import { HomeComponent } from './home.component';
 
-const routes: Routes = [
-  { path: '', component: HomeComponent }, // 进入该模块时默认显示 HomeComponent
-];
-
 @NgModule({
   declarations: [HomeComponent],
   imports: [
     CommonModule,
     HttpClientModule,
     TranslateModule,
-    RouterModule.forChild(routes),
   ],
-  exports:[HomeComponent]
+  exports: [HomeComponent]
 })
-export class HomeModule {}
+export class HomeModule { }

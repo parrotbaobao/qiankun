@@ -2,7 +2,9 @@
   "dependencies": {
     "@antv/g6": "^5.0.51",
     "cors": "^2.8.6",
-    "express": "^5.2.1"
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "openai": "^6.37.0"
   },
   "devDependencies": {
     "@types/node": "^25.6.0"

@@ -1,4 +1,3 @@
-import 'zone.js';
 import '../public-path';
 
 import { NgZone } from '@angular/core';

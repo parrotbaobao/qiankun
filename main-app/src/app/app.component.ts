@@ -46,6 +46,18 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  // 沙箱模式：'none' | 'experimental' | 'strict'
+  sandboxMode: string = localStorage.getItem('qk_sandbox_mode') ?? 'none';
+
+  setSandboxMode(mode: string): void {
+    localStorage.setItem('qk_sandbox_mode', mode);
+    window.location.reload();
+  }
+
+  getSandboxLabel(mode: string): string {
+    return { none: '无隔离', experimental: 'experimentalStyleIsolation', strict: 'strictStyleIsolation (Shadow DOM)' }[mode] ?? mode;
+  }
+
   ngAfterViewInit(): void {
     // 1. 初始化全局状态（必须在 registerMicroApps 之前调用）
     this.mfeActions = initMfeState({ language: 'zh' });
@@ -64,25 +76,34 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     // 2. 注册子应用
     registerMicroApps([
       {
-        name: 'sub-app',
-        entry: 'http://localhost:5003/',
+        name: 'sub1-app',
+        entry: 'http://localhost:8080/',
         container: '#container',
-        activeRule: (loc) => loc.pathname.startsWith('/sub-app'),
+        activeRule: (loc) => loc.pathname.startsWith('/sub1-app'),
       },
       {
         name: 'sub2-app2',
-        entry: 'http://localhost:4202/',
+        entry: 'http://localhost:8085/',
         container: '#container',
         activeRule: (loc) => loc.pathname.startsWith('/sub2-app2'),
       },
+      {
+        name: 'sub-app3',
+        entry: 'http://localhost:5174/',
+        container: '#container',
+        activeRule: (loc) => loc.pathname.startsWith('/sub-app3'),
+      },
     ]);
 
-    // 3. 启动 qiankun
+    // 3. 根据 localStorage 中的沙箱模式启动 qiankun
+    const mode = this.sandboxMode;
+
+    console.log(mode)
     start({
       prefetch: 'all',
       sandbox: {
-        strictStyleIsolation: false,
-        experimentalStyleIsolation: false,
+        strictStyleIsolation: mode === 'strict',
+        experimentalStyleIsolation: mode === 'experimental',
       },
     });
   }
@@ -144,13 +165,28 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   goSubApp1(): void {
-    this.router.navigateByUrl('/sub-app');
-    this.updateSelectedProduct('sub-app', '子应用1');
+    this.router.navigateByUrl('/sub1-app');
+    this.updateSelectedProduct('sub1-app', '子应用1');
   }
 
   goSubApp2(): void {
-    this.router.navigateByUrl('/sub2-app2');
-    this.updateSelectedProduct('sub2-app2', '子应用2');
+    this.router.navigateByUrl('/sub2-app');
+    this.updateSelectedProduct('sub2-app', '子应用2');
+  }
+
+  goSubApp3(): void {
+    this.router.navigateByUrl('/sub-app3/ui-demo');
+    this.updateSelectedProduct('sub-app3', '子应用3(Vue)');
+  }
+
+  goSubApp3CssTest(): void {
+    this.router.navigateByUrl('/sub-app3/css-isolation-test');
+    this.updateSelectedProduct('sub-app3', '子应用3(Vue)');
+  }
+
+  goSubApp3JsTest(): void {
+    this.router.navigateByUrl('/sub-app3/js-isolation-test');
+    this.updateSelectedProduct('sub-app3', '子应用3(Vue)');
   }
 
   ngOnDestroy(): void {

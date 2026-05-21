@@ -1,1 +1,29 @@
 /* You can add global styles to this file, and also import other style files */
+
+/* ── CSS 隔离测试用：主应用全局污染样式 ─────────────────────────────────────────
+   目的：验证子应用在不同沙箱模式下是否受到主应用全局样式影响。
+   场景C：类名冲突 —— 子应用若存在 .conflict-btn，此样式会穿透污染它
+   场景B：CSS 变量 —— 与子应用同名变量，验证谁覆盖谁
+   场景E：:root 变量 —— 任何隔离模式都无法阻止 :root 变量泄露
+   ──────────────────────────────────────────────────────────────────────────── */
+:root {
+  --host-primary: #e53935;         /* 主应用主色：红 */
+  --shared-color: #ff6600;         /* 与子应用同名变量（子应用定义为蓝），验证谁赢 */
+}
+
+/* 场景C：主应用定义 .conflict-btn，用 body 提权重而非 !important
+   body .conflict-btn 权重(0,1,1) > 子应用全局 .conflict-btn(0,1,0) → none 模式下污染子应用
+   experimental 模式：qiankun 给子应用样式加前缀(0,2,1) > 主应用(0,1,1) → 子应用蓝色胜出 */
+body .conflict-btn {
+  background: #e53935;
+  color: #fff;
+  border: 2px solid #b71c1c;
+  border-radius: 4px;
+  padding: 6px 14px;
+}
+
+/* 场景D：主应用的 @keyframes spin（子应用也定义了同名但不同行为的动画） */
+@keyframes spin {
+  from { transform: rotate(0deg) scale(1); }
+  to   { transform: rotate(360deg) scale(1); }  /* 主应用：只旋转，不缩放 */
+}

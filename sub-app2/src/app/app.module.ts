@@ -39,4 +39,4 @@ import { PORTAL_AGENT } from './core/portal-agent.token';
   ],
   bootstrap: [AppComponent],
 })
-export class AppModule {}
+export class AppModule { }

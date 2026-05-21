@@ -1,0 +1,36 @@
+<div class="ui-demo-page">
+  <h2 class="page-title">DevUI 组件示例</h2>
+
+  <!-- ── Buttons ─────────────────────────────────────────────── -->
+  <section class="demo-section">
+    <h3 class="section-title">操作入口</h3>
+    <div class="btn-row">
+      <d-button bsStyle="primary" (click)="openDrawer()">打开抽屉</d-button>
+      <d-button bsStyle="primary" (click)="openModal()">打开弹窗</d-button>
+    </div>
+  </section>
+
+  <!-- ── DataTable ───────────────────────────────────────────── -->
+  <section class="demo-section">
+    <h3 class="section-title">数据表格</h3>
+    <d-data-table
+      [dataSource]="tableData"
+      [scrollable]="true"
+      [tableWidthConfig]="tableWidthConfig"
+      [checkable]="false"
+      [rowHoveredHighlight]="true"
+    >
+      <d-column field="id"         header="ID"    [width]="'80px'"></d-column>
+      <d-column field="name"       header="姓名"   [width]="'120px'"></d-column>
+      <d-column field="department" header="部门"   [width]="'120px'"></d-column>
+      <d-column field="role"       header="角色"   [width]="'160px'"></d-column>
+      <d-column field="status"     header="状态"   [width]="'100px'">
+        <ng-template let-rowItem="rowItem" dTableCellView>
+          <span [class]="'status-tag status-' + (rowItem.status === '在职' ? 'active' : 'inactive')">
+            {{ rowItem.status }}
+          </span>
+        </ng-template>
+      </d-column>
+    </d-data-table>
+  </section>
+</div>

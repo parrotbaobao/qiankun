@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve --port 4202",
+    "start": "ng serve --port 8085",
     "build": "ng build --configuration production --base-href /app2/ --deploy-url /app2/",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"

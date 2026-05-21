@@ -1,165 +1,174 @@
-.sdk-page {
+.cmp-page {
+  padding: 24px 32px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  align-content: start;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.cmp-header {
+  grid-column: 1 / -1;
+  h2 { margin: 0 0 6px; font-size: 20px; font-weight: 700; color: #111827; }
+  p  { margin: 0; font-size: 13px; color: #6b7280; }
+}
+
+/* ── 场景卡片 ── */
+.card {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  background: #f5f7fa;
+  gap: 10px;
 }
 
-.sdk-header {
-  padding: 28px 36px 20px;
-  background: #fff;
-  border-bottom: 1px solid #e8eaed;
-  &__title { margin: 0 0 6px; font-size: 22px; font-weight: 600; color: #1a1a2e; }
-  &__sub { margin: 0; font-size: 13px; color: #6b7280; }
-}
-
-.sdk-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
-
-.sdk-sidebar {
-  width: 180px;
-  flex-shrink: 0;
-  background: #fff;
-  border-right: 1px solid #e8eaed;
-  padding: 16px 0;
-  overflow-y: auto;
-}
-
-.sidebar-label {
-  padding: 0 16px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: #9ca3af;
-}
-
-.lang-list { list-style: none; margin: 0; padding: 0; }
-
-.lang-item {
+.card-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 16px;
-  cursor: pointer;
-  font-size: 13.5px;
-  color: #374151;
-  transition: background .15s;
-  border-left: 3px solid transparent;
-  &:hover { background: #f3f4f6; }
-  &--active {
-    background: #eef2ff;
-    border-left-color: #4f46e5;
-    color: #4f46e5;
-    font-weight: 600;
-    .lang-dot { opacity: 1; }
-  }
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  code { font-size: 12px; background: #f3f4f6; padding: 1px 5px; border-radius: 3px; }
 }
 
-.lang-dot {
-  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; opacity: .45;
-  &--java    { background: #f89820; }
-  &--python  { background: #3572A5; }
-  &--go      { background: #00ACD7; }
-  &--nodejs  { background: #68a063; }
-  &--php     { background: #777bb3; }
-  &--csharp  { background: #178600; }
+.tag {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.tag-a { background: #dbeafe; color: #1d4ed8; }
+.tag-b { background: #d1fae5; color: #065f46; }
+.tag-c { background: #fee2e2; color: #991b1b; }
+.tag-d { background: #ede9fe; color: #5b21b6; }
+.tag-e { background: #ffedd5; color: #9a3412; }
+
+.note {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 0;
+  code { background: #f3f4f6; padding: 1px 4px; border-radius: 3px; font-size: 11px; }
 }
 
-.sdk-content { flex: 1; min-width: 0; overflow-y: auto; padding: 24px 32px; }
+/* ── A：按钮 ── */
+.btn-row { display: flex; gap: 10px; }
 
-.sdk-skeleton { display: flex; flex-direction: column; gap: 16px; }
-.skeleton-card {
-  height: 260px;
-  background: linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: 10px;
-}
-@keyframes shimmer { to { background-position: -200% 0; } }
-
-.sdk-card {
+.action-btn {
+  padding: 7px 16px;
+  border-radius: 7px;
+  border: 1px solid #d1d5db;
   background: #fff;
-  border: 1px solid #e8eaed;
-  border-radius: 10px;
-  padding: 24px;
-  margin-bottom: 16px;
-  transition: box-shadow .2s;
-  &:hover { box-shadow: 0 4px 16px rgba(0,0,0,.07); }
-}
-
-.sdk-card__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.sdk-card__title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
-.sdk-card__name {
-  font-size: 15px; font-weight: 700; color: #111827;
-  font-family: 'IBM Plex Mono', monospace;
-}
-
-.sdk-card__badge {
-  padding: 2px 8px; border-radius: 99px; background: #eef2ff;
-  color: #4f46e5; font-size: 11px; font-weight: 600;
-  font-family: 'IBM Plex Mono', monospace;
-}
-
-.sdk-card__actions { display: flex; gap: 8px; flex-shrink: 0; }
-
-.card-link {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 5px 12px; border-radius: 6px; font-size: 12.5px; font-weight: 500;
-  text-decoration: none; border: 1px solid #d1d5db; color: #374151;
+  color: #374151;
+  font-size: 13px;
+  cursor: pointer;
   transition: all .15s;
-  &:hover { border-color: #9ca3af; background: #f9fafb; }
-  &--primary {
-    background: #4f46e5; color: #fff; border-color: #4f46e5;
-    &:hover { background: #4338ca; }
-  }
+  &:hover { background: #f9fafb; border-color: #9ca3af; }
 }
 
-.sdk-card__desc { font-size: 13.5px; color: #6b7280; line-height: 1.6; margin: 0 0 16px; }
+/* ── B：CSS 变量 ── */
+.var-row { display: flex; gap: 12px; }
 
-.install-block { margin-bottom: 20px; }
+.var-box {
+  flex: 1;
+  border-radius: 8px;
+  padding: 14px 16px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.var-name { font-size: 13px; font-weight: 700; }
+.var-hint { font-size: 11px; opacity: .8; line-height: 1.5; }
 
-.install-label {
-  font-size: 11.5px; font-weight: 600; color: #9ca3af;
-  text-transform: uppercase; letter-spacing: .06em; display: block; margin-bottom: 6px;
+/* ── C：类名冲突 ── 样式定义在全局 styles.scss，不走 ViewEncapsulation */
+
+/* ── D：@keyframes ── */
+@keyframes spin {
+  0%   { transform: rotate(0deg)   scale(1);   }
+  50%  { transform: rotate(180deg) scale(1.3); }
+  100% { transform: rotate(360deg) scale(1);   }
 }
 
-.install-cmd {
-  display: flex; align-items: center; background: #0f172a;
-  border-radius: 7px; padding: 10px 14px; gap: 12px;
+.spin-row { display: flex; gap: 16px; align-items: center; }
+
+.spin-box {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  small { font-size: 10px; opacity: .8; }
 }
 
-.install-code {
-  flex: 1; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;
-  color: #a5f3fc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.sub1-spin {
+  background: linear-gradient(135deg, #409eff, #66b1ff);
+  animation: spin 2s linear infinite;
 }
 
-.copy-btn {
-  flex-shrink: 0; padding: 3px 10px; border-radius: 5px;
-  border: 1px solid #334155; background: transparent; color: #94a3b8;
-  font-size: 11.5px; cursor: pointer; transition: all .15s;
-  &:hover { background: #1e293b; color: #e2e8f0; }
+/* ── Dialog ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.changelog { border-top: 1px solid #f3f4f6; padding-top: 14px; }
-
-.changelog__title {
-  font-size: 12px; font-weight: 600; color: #9ca3af;
-  margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+.dialog {
+  background: #fff;
+  border-radius: 12px;
+  width: 420px;
+  max-width: 90vw;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.2);
 }
-.changelog__date { font-weight: 400; color: #d1d5db; }
 
-.changelog__list {
-  list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px;
-  li {
-    font-size: 12.5px; color: #6b7280; padding-left: 14px; position: relative;
-    &::before { content: '·'; position: absolute; left: 4px; color: #4f46e5; font-weight: 700; }
-  }
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dialog-body {
+  padding: 18px;
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.7;
+  p { margin: 0 0 8px; &:last-child { margin: 0; } }
+  strong { color: #4f46e5; }
+}
+
+.dialog-foot {
+  padding: 12px 18px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,.8);
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  &:hover { color: #fff; }
 }

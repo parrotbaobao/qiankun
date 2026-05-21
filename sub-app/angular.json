@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "sub-app": {
+    "sub1-app": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -20,7 +20,7 @@
             "customWebpackConfig": {
               "path": "./webpack/custom-webpack.config.js"
             },
-            "outputPath": "dist/sub-app/",
+            "outputPath": "dist/sub1-app/",
             "index": "src/index.html",
             "main": "src/main.ts",
             "polyfills": "src/polyfills.ts",
@@ -68,14 +68,16 @@
           "builder": "@angular-builders/custom-webpack:dev-server",
           "options": {
             "liveReload": false,
-            "browserTarget": "sub-app:build"
+            "browserTarget": "sub1-app:build",
+            "proxyConfig": "proxy.conf.json",
+            "port": 8085
           },
           "configurations": {
             "production": {
-              "browserTarget": "sub-app:build:production"
+              "browserTarget": "sub1-app:build:production"
             },
             "development": {
-              "browserTarget": "sub-app:build:development"
+              "browserTarget": "sub1-app:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -83,7 +85,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "sub-app:build"
+            "browserTarget": "sub1-app:build"
           }
         },
         "test": {

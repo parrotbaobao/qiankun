@@ -46,3 +46,44 @@
 <main class="app-main">
   <router-outlet></router-outlet>
 </main>
+
+<!-- CSS 探针栏：在所有页面底部常驻显示 -->
+<div class="probe-bar">
+  <span class="probe-id">📦 子应用1</span>
+  <span class="probe-sep">·</span>
+  <span class="probe-item">
+    <em class="probe-tag tag-c">C</em>
+    <button class="conflict-btn probe-conflict-btn">类名冲突</button>
+  </span>
+  <span class="probe-item">
+    <em class="probe-tag tag-b">B</em>
+    <span class="probe-var-swatch" style="background: var(--shared-color, #409eff)">--shared-color</span>
+  </span>
+  <span class="probe-item">
+    <em class="probe-tag tag-d">D</em>
+    <span class="probe-spinner"></span>
+  </span>
+  <span class="probe-item">
+    <em class="probe-tag tag-a">A</em>
+    <button class="probe-dialog-btn" (click)="probeDialogOpen = true">弹窗</button>
+  </span>
+  <span class="probe-hint">切换主应用沙箱模式观察变化</span>
+</div>
+
+<!-- 探针弹窗（非 Portal，渲染在组件内） -->
+<div class="probe-overlay" *ngIf="probeDialogOpen" (click)="probeDialogOpen = false">
+  <div class="probe-dialog" (click)="$event.stopPropagation()">
+    <div class="probe-dialog-head">
+      📦 子应用1 · 弹窗测试
+      <button class="probe-close" (click)="probeDialogOpen = false">✕</button>
+    </div>
+    <div class="probe-dialog-body">
+      <p>此弹窗在 Angular 模板内渲染（非 Portal）。</p>
+      <p>experimental 模式下：样式仍有效（因为元素在 qiankun 容器内，选择器前缀能匹配）。</p>
+      <p>对比子应用3的 El-Plus Dialog：它通过 Portal 挂到 body，experimental/strict 下丢失样式。</p>
+    </div>
+    <div class="probe-dialog-foot">
+      <button class="probe-dialog-btn" (click)="probeDialogOpen = false">关闭</button>
+    </div>
+  </div>
+</div>

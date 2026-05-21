@@ -1,0 +1,52 @@
+.ui-demo-page {
+  padding: 32px;
+  background: #f5f6fa;
+  min-height: 100%;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #252b3a;
+  margin: 0 0 24px;
+}
+
+.demo-section {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #252b3a;
+  margin: 0 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f1f5;
+}
+
+.btn-row {
+  display: flex;
+  gap: 12px;
+}
+
+.status-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-active {
+  background: #e8f7ef;
+  color: #00b365;
+}
+
+.status-inactive {
+  background: #fef1f0;
+  color: #f66f6a;
+}

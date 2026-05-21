@@ -68,7 +68,7 @@
             "liveReload": false,
             "browserTarget": "sub2-app2:build",
             "proxyConfig": "proxy.conf.json",
-            "port": 4202
+            "port": 8085
           },
           "configurations": {
             "production": {

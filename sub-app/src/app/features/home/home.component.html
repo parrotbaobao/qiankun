@@ -1,76 +1,83 @@
-<div class="sdk-page">
-  <div class="sdk-header">
-    <h1 class="sdk-header__title">{{ 'sdk.title' | translate }}</h1>
-    <p class="sdk-header__sub">{{ 'sdk.subtitle' | translate }}</p>
+<div class="cmp-page">
+  <div class="cmp-header">
+    <h2>📦 子应用1 · CSS 隔离对比</h2>
+    <p>在这里观察子应用侧的表现，切换到主应用首页进行对比。切换顶部沙箱模式后刷新。</p>
   </div>
 
-  <div class="sdk-body">
-    <!-- Language sidebar -->
-    <aside class="sdk-sidebar">
-      <div class="sidebar-label">{{ 'sdk.language' | translate }}</div>
-      <ul class="lang-list">
-        <li
-          *ngFor="let group of sdkGroups"
-          class="lang-item"
-          [class.lang-item--active]="activeLang === group.lang"
-          (click)="activeLang = group.lang"
-        >
-          <span class="lang-dot lang-dot--{{ group.icon }}"></span>
-          <span class="lang-name">{{ group.lang }}</span>
-        </li>
-      </ul>
-    </aside>
+  <!-- 场景 A：弹窗 -->
+  <section class="card">
+    <div class="card-title"><span class="tag tag-a">A</span> 弹窗（非 Portal）</div>
+    <div class="btn-row">
+      <button class="action-btn" (click)="dialogOpen = true">打开 Dialog</button>
+    </div>
+    <p class="note">此弹窗在 Angular 组件模板内渲染，<strong>不走 Portal</strong>，所以 experimental 模式下样式仍有效。对比子应用3的 El-Plus Dialog（走 Portal），experimental/strict 下样式会丢失。</p>
+  </section>
 
-    <main class="sdk-content">
-      <div *ngIf="loading" class="sdk-skeleton">
-        <div class="skeleton-card" *ngFor="let i of [1]"></div>
+  <!-- 场景 B：CSS 变量 -->
+  <section class="card">
+    <div class="card-title"><span class="tag tag-b">B</span> CSS 变量</div>
+    <div class="var-row">
+      <div class="var-box" style="background: var(--shared-color, #409eff)">
+        <span class="var-name">--shared-color</span>
+        <span class="var-hint">
+          实际读到：{{ sharedColor }}<br>
+          子应用期望：蓝 #409eff<br>
+          主应用定义：橙 #ff6600
+        </span>
       </div>
+      <div class="var-box" style="background: var(--host-primary, #888)">
+        <span class="var-name">--host-primary（主应用专属）</span>
+        <span class="var-hint">
+          实际读到：{{ hostPrimary }}<br>
+          若有值说明 :root 变量泄露进来了
+        </span>
+      </div>
+    </div>
+  </section>
 
-      <ng-container *ngIf="!loading && activeGroup">
-        <div *ngFor="let pkg of activeGroup.packages" class="sdk-card">
-          <!-- Card header -->
-          <div class="sdk-card__head">
-            <div class="sdk-card__title-row">
-              <span class="sdk-card__name">{{ pkg.name }}</span>
-              <span class="sdk-card__badge">v{{ pkg.version }}</span>
-            </div>
-            <div class="sdk-card__actions">
-              <a [href]="pkg.githubUrl" target="_blank" class="card-link">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-                GitHub
-              </a>
-              <a [href]="pkg.docUrl" target="_blank" class="card-link card-link--primary">
-                {{ 'sdk.docs' | translate }}
-              </a>
-            </div>
-          </div>
+  <!-- 场景 C：类名冲突 -->
+  <section class="card">
+    <div class="card-title"><span class="tag tag-c">C</span> 类名冲突 <code>.conflict-btn</code></div>
+    <button class="conflict-btn">子应用1 的 .conflict-btn</button>
+    <p class="note">子应用期望此按钮为<strong>蓝色</strong>。<br>
+      <strong>none</strong>：被主应用 <code>.conflict-btn &#123; background: red !important &#125;</code> 污染 → 红色<br>
+      <strong>experimental / strict</strong>：主应用全局样式被隔离 → 蓝色
+    </p>
+  </section>
 
-          <p class="sdk-card__desc">{{ getDesc(pkg) }}</p>
+  <!-- 场景 D：@keyframes -->
+  <section class="card">
+    <div class="card-title"><span class="tag tag-d">D</span> @keyframes spin 动画</div>
+    <div class="spin-row">
+      <div class="spin-box sub1-spin">子应用1<br><small>旋转+缩放</small></div>
+    </div>
+    <p class="note">子应用1 定义的 <code>@keyframes spin</code>：旋转 + 缩放脉冲。主应用也定义了同名 spin（只旋转）。none 模式下两者可能互相覆盖；strict 模式下完全隔离，动画各自独立。</p>
+  </section>
 
-          <!-- Install command -->
-          <div class="install-block" *ngIf="getInstallCmd(pkg)">
-            <span class="install-label">{{ 'sdk.install' | translate }}</span>
-            <div class="install-cmd">
-              <code class="install-code">{{ getInstallCmd(pkg) }}</code>
-              <button class="copy-btn" (click)="copy(getInstallCmd(pkg), pkg.id)">
-                <ng-container *ngIf="copied !== pkg.id">{{ 'sdk.copy' | translate }}</ng-container>
-                <ng-container *ngIf="copied === pkg.id">✓ {{ 'sdk.copied' | translate }}</ng-container>
-              </button>
-            </div>
-          </div>
+  <!-- 场景 E：:root 变量 -->
+  <section class="card">
+    <div class="card-title"><span class="tag tag-e">E</span> :root 变量泄露（所有模式）</div>
+    <p class="note">
+      主应用 <code>--host-primary</code> 实际读到：<strong style="color: var(--host-primary, #888)">{{ hostPrimary }}</strong><br>
+      无论哪种沙箱模式，子应用都能读到主应用 <code>:root</code> 里定义的变量，qiankun 无法阻止。
+    </p>
+  </section>
 
-          <!-- Changelog -->
-          <div class="changelog">
-            <div class="changelog__title">
-              {{ 'sdk.changelog' | translate }}
-              <span class="changelog__date">{{ pkg.publishedAt }}</span>
-            </div>
-            <ul class="changelog__list">
-              <li *ngFor="let item of getChangelog(pkg)">{{ item }}</li>
-            </ul>
-          </div>
-        </div>
-      </ng-container>
-    </main>
+  <!-- Dialog overlay -->
+  <div class="overlay" *ngIf="dialogOpen" (click)="dialogOpen = false">
+    <div class="dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-head">
+        📦 子应用1 · Dialog
+        <button class="close-btn" (click)="dialogOpen = false">✕</button>
+      </div>
+      <div class="dialog-body">
+        <p>此弹窗渲染在 Angular 模板内（非 Portal）。</p>
+        <p>experimental 模式：样式仍有效（元素在 qiankun 容器内，选择器前缀能匹配）。</p>
+        <p>对比子应用3 El-Plus Dialog：它 Portal 到 body，experimental/strict 下丢样式。</p>
+      </div>
+      <div class="dialog-foot">
+        <button class="action-btn" (click)="dialogOpen = false">关闭</button>
+      </div>
+    </div>
   </div>
 </div>

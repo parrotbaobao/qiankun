@@ -8,6 +8,6 @@ module.exports = {
   output: {
     library: `${appName}-[name]`,
     libraryTarget: 'umd',
-    chunkLoadingGlobal: `webpackJsonp_${appName}`,
+    jsonpFunction: `webpackJsonp_${appName}`,
   },
 };

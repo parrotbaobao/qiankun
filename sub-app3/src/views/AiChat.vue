@@ -1,7 +1,7 @@
 <template>
     <div class="ai-chat">
-        <header class="ai-header">
-            <h3>AI 聊天</h3>
+        <header v-if="!hideHeader" class="ai-header">
+            <h3>{{ title || 'AI 聊天' }}</h3>
         </header>
         <section class="ai-body" ref="scrollEl">
             <div class="messages">
@@ -22,7 +22,7 @@
         </section>
 
         <footer class="ai-footer">
-            <input v-model="inputText" placeholder="输入消息..." @keydown.enter="send()" />
+            <input ref="chatInputRef" v-model="inputText" placeholder="输入消息..." @keydown.enter="send()" />
             <button @click="send()">发送</button>
             <button @click="stop()">停止</button>
         </footer>
@@ -30,10 +30,37 @@
 
 </template>
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, reactive, ref, type Ref } from 'vue';
 import { createChatStream } from '@/services/chat.service';
 import type { Subscription } from 'rxjs';
 import MdText from './MdText.vue'
+import { useAuthStore } from '../stores/auth'
+
+const props = defineProps<{
+    systemPrompt?: string
+    title?: string
+    temperature?: number
+    model?: string
+    maxTokens?: number
+    topP?: number
+    hideHeader?: boolean
+    url?: string
+}>()
+
+const chatInputRef = ref<HTMLInputElement | null>(null)
+
+defineExpose({
+    clearMessages: () => { messages.splice(0); stop() },
+    setInput: (text: string) => {
+        inputText.value = text
+        nextTick(() => chatInputRef.value?.focus())
+    },
+    sendMessage: (text: string) => {
+        if (!text.trim()) return
+        inputText.value = text
+        nextTick(() => send())
+    },
+})
 
 type Message = {
     id: string;
@@ -54,8 +81,11 @@ let sub: Subscription;
 const THRESHOLD = 40 // px：离底部 <= 40px 认为在底部（避免小抖动）
 const isAtBottom = ref(true)
 const autoScrollEnabled = ref(true)
+const auth = useAuthStore();
 
 let abortFn: () => void;
+
+const user = auth.user;
 
 function send() {
     const text = (inputText.value || '').trim();
@@ -63,7 +93,7 @@ function send() {
         id: crypto.randomUUID(),
         from: 'user', text, createdAt: Date.now(),
     })
-    // 插入一条“正在流式”的 AI 消息（后续不断覆盖 text）
+    // 插入一条"正在流式"的 AI 消息（后续不断覆盖 text）
     currentAssistantMsg.value = {
         id: crypto.randomUUID(),
         from: 'ai',
@@ -84,20 +114,24 @@ function stop() {
 }
 
 function sendToAI(text: string) {
+    const history = messages
+        .filter(m => !m.loading && m.status !== 'ERROR' && m.text)
+        .slice(0, -1)
+        .map(m => ({ role: m.from === 'user' ? 'user' : 'assistant', content: m.text }))
+
     const options = {
+        retry: false,
+        url: props.url,
         body: {
-            model: 'google/gemma-3-4b',
-            stream: true,
-            temperature: 0.2,
-            messages: [{ role: 'user', content: text }],
+            message: text,
+            history,
+            ...(props.systemPrompt ? { systemPrompt: props.systemPrompt } : {}),
         },
         pickText: (data: string) => {
-            try {
-                const obj = JSON.parse(data);
-                return obj?.choices?.[0]?.delta?.content ?? '';
-            } catch {
-                return ''
-            }
+            const obj = JSON.parse(data)
+            if (obj.type === 'error') throw new Error(obj.message)
+            if (obj.type === 'done') return ''
+            return obj.content ?? ''
         }
     }
     streaming.value = true;
@@ -112,7 +146,13 @@ function sendToAI(text: string) {
                 scrollToBottom()
             }
         },
-        error() {
+        error(err) {
+            if (currentAssistantMsg.value) {
+                streaming.value = false;
+                currentAssistantMsg.value.loading = false;
+                currentAssistantMsg.value.text = `⚠️ ${err?.message ?? '请求失败，请检查 LM Studio 是否正常运行'}`;
+                currentAssistantMsg.value.status = 'ERROR';
+            }
         },
         complete() {
             if (currentAssistantMsg.value) {
@@ -177,7 +217,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .ai-chat {
   max-width: 860px;
-  height: calc(100vh - 49px);
+  height: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;

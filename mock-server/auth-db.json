@@ -1,0 +1,91 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "password": "123456",
+      "name": "王建国",
+      "nickname": "老王",
+      "avatar": "https://api.dicebear.com/9.x/avataaars/svg?seed=admin&backgroundColor=b6e3f4",
+      "email": "wangjg@company.com",
+      "phone": "138****8001",
+      "gender": "male",
+      "role": "admin",
+      "department": "技术部",
+      "position": "系统架构师",
+      "bio": "10年+全栈开发经验，热爱开源，专注于AI应用开发",
+      "location": "上海",
+      "website": "https://github.com/wangjg",
+      "status": "active",
+      "permissions": [
+        "user:read",
+        "user:write",
+        "user:delete",
+        "prompt:read",
+        "prompt:write",
+        "prompt:delete",
+        "system:admin"
+      ],
+      "tags": [
+        "核心成员",
+        "全栈工程师",
+        "AI爱好者"
+      ],
+      "preferences": {
+        "theme": "light",
+        "language": "zh-CN",
+        "notifications": true,
+        "compactMode": false
+      },
+      "stats": {
+        "loginCount": 313,
+        "promptCount": 87,
+        "chatCount": 1024
+      },
+      "createdAt": "2024-01-15T08:00:00.000Z",
+      "lastLoginAt": "2026-05-13T15:37:31.743Z",
+      "updatedAt": "2025-03-10T14:22:00.000Z"
+    },
+    {
+      "id": 2,
+      "username": "user",
+      "password": "123456",
+      "name": "李晓明",
+      "nickname": "小李",
+      "avatar": "https://api.dicebear.com/9.x/avataaars/svg?seed=user&backgroundColor=ffdfbf",
+      "email": "lixm@company.com",
+      "phone": "136****6688",
+      "gender": "male",
+      "role": "user",
+      "department": "产品部",
+      "position": "产品经理",
+      "bio": "专注于AI产品设计，热衷于探索新技术与用户体验",
+      "location": "北京",
+      "website": "",
+      "status": "active",
+      "permissions": [
+        "prompt:read",
+        "prompt:write",
+        "user:read"
+      ],
+      "tags": [
+        "产品经理",
+        "AI探索者"
+      ],
+      "preferences": {
+        "theme": "light",
+        "language": "zh-CN",
+        "notifications": true,
+        "compactMode": true
+      },
+      "stats": {
+        "loginCount": 49,
+        "promptCount": 12,
+        "chatCount": 89
+      },
+      "createdAt": "2024-06-01T09:30:00.000Z",
+      "lastLoginAt": "2026-05-19T08:57:59.367Z",
+      "updatedAt": "2025-04-20T11:05:00.000Z"
+    }
+  ]
+}

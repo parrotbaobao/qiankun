@@ -7,15 +7,33 @@
 
     <nav class="nav">
       <button class="btn" [class.active]="isActive('/home')" (click)="goHostHome()">主应用</button>
-      <button class="btn" [class.active]="isActive('/sub-app')" (click)="goSubApp1()">子应用1</button>
-      <button class="btn" [class.active]="isActive('/sub2-app2')" (click)="goSubApp2()">子应用2</button>
+      <button class="btn" [class.active]="currentUrl.startsWith('/sub1-app')" (click)="goSubApp1()">子应用1
+        (Angular)</button>
+      <button class="btn" (click)="goSubApp2()">子应用2</button>
+      <button class="btn" [class.active]="currentUrl.startsWith('/sub-app3')" (click)="goSubApp3()">子应用3 (Vue)</button>
+      <button class="btn btn-test" (click)="goSubApp3CssTest()">🎨 CSS 隔离</button>
+      <button class="btn btn-test" (click)="goSubApp3JsTest()">⚡ JS 隔离</button>
       <button class="btn" [class.active]="isActive('/cloud-advisor')" (click)="goHostAd()">Cloud Advisor</button>
     </nav>
+
+    <!-- 沙箱模式切换器 -->
+    <div class="sandbox-switcher">
+      <span class="sb-label">沙箱</span>
+      <button *ngFor="let m of ['none','experimental','strict']" class="sb-btn" [class.sb-active]="sandboxMode === m"
+        (click)="setSandboxMode(m)" [title]="getSandboxLabel(m)">
+        {{ m }}
+      </button>
+    </div>
   </header>
 
-  <!-- Angular 自身路由内容（主应用页面） -->
-  <router-outlet></router-outlet>
+  <!-- 当前沙箱模式提示条 -->
+  <div class="sandbox-bar" [ngClass]="'sb-' + sandboxMode">
+    当前沙箱：<strong>{{ getSandboxLabel(sandboxMode) }}</strong>
+    <span class="sb-tip" *ngIf="sandboxMode === 'none'">⚠️ CSS 无隔离，样式可能互相污染</span>
+    <span class="sb-tip" *ngIf="sandboxMode === 'experimental'">⚠️ Portal 弹窗/抽屉超出容器后样式会丢失</span>
+    <span class="sb-tip" *ngIf="sandboxMode === 'strict'">⚠️ Shadow DOM，所有挂到 body 的弹层样式全部消失</span>
+  </div>
 
-  <!-- qiankun 子应用挂载点 -->
+  <router-outlet></router-outlet>
   <div id="container"></div>
 </div>

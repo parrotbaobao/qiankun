@@ -1,0 +1,91 @@
+<div class="polling-demo">
+  <h2 class="title">RxJS 轮询演示 <code>interval + switchMap</code></h2>
+
+  <!-- 控制面板 -->
+  <section class="card controls">
+    <div class="row">
+      <button class="btn btn-primary" (click)="createTask()" [disabled]="isPolling">
+        ▶ 创建任务并开始轮询
+      </button>
+      <button
+        class="btn"
+        [class.btn-warn]="isPolling"
+        [class.btn-success]="!isPolling && taskId"
+        (click)="togglePolling()"
+        [disabled]="!taskId || taskStatus?.status === 'done'"
+      >
+        {{ isPolling ? '⏸ 暂停轮询' : '▶ 恢复轮询' }}
+      </button>
+      <button class="btn btn-danger" (click)="reset()" [disabled]="!taskId && !logs.length">
+        ✕ 重置
+      </button>
+    </div>
+
+    <div class="row interval-row">
+      <span class="label">轮询间隔：</span>
+      <button
+        *ngFor="let ms of [1000, 2000, 3000, 5000]"
+        class="btn btn-sm"
+        [class.active]="intervalMs === ms"
+        (click)="changeInterval(ms)"
+      >
+        {{ ms / 1000 }}s
+      </button>
+    </div>
+  </section>
+
+  <!-- 任务状态 -->
+  <section class="card status-card" *ngIf="taskId">
+    <div class="status-header">
+      <span class="task-id">任务 ID: <code>{{ taskId }}</code></span>
+      <span class="poll-count">已轮询 <strong>{{ pollCount }}</strong> 次</span>
+      <span class="badge" [attr.data-status]="taskStatus?.status ?? 'pending'">
+        {{ taskStatus?.message ?? '等待中...' }}
+      </span>
+    </div>
+
+    <!-- 进度条 -->
+    <div class="progress-bar-wrap">
+      <div
+        class="progress-bar-fill"
+        [style.width.%]="taskStatus?.progress ?? 0"
+        [attr.data-status]="taskStatus?.status"
+      ></div>
+      <span class="progress-label">{{ taskStatus?.progress ?? 0 }}%</span>
+    </div>
+
+    <!-- 状态流水线 -->
+    <div class="pipeline">
+      <div
+        *ngFor="let s of ['pending','queued','processing','done']"
+        class="step"
+        [class.active]="taskStatus?.status === s"
+        [class.passed]="isStepPassed(s)"
+      >
+        <div class="dot"></div>
+        <span>{{ s }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 代码说明 -->
+  <section class="card code-card">
+    <h3>核心代码模式</h3>
+    <pre><code>{{ codeSnippet }}</code></pre>
+  </section>
+
+  <!-- 日志 -->
+  <section class="card log-card" *ngIf="logs.length">
+    <h3>轮询日志 <span class="log-count">{{ logs.length }} 条</span></h3>
+    <div class="log-list">
+      <div
+        *ngFor="let log of logs"
+        class="log-item"
+        [attr.data-type]="log.type"
+      >
+        <span class="log-time">{{ log.time }}</span>
+        <span class="log-text">{{ log.text }}</span>
+      </div>
+    </div>
+  </section>
+</div>

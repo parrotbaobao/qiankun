@@ -2,31 +2,18 @@ import { fetchEventSource } from '@microsoft/fetch-event-source'
 import { Observable } from 'rxjs'
 
 export type TypewriterOptions = {
-  method?: 'GET' | 'POST' // HTTP 方法（你当前实际固定 POST，可保留以便扩展）
-  headers?: Record<string, string> // 请求头（你当前也固定写了，可保留以便扩展）
-  body?: {
-    [k: string]: unknown // 允许额外字段
-  } // 请求体（对象会 JSON.stringify）
-
-  /** 打字机速度：每 tick 吐多少字符（你当前已不用 tick 方式，可删或保留兼容） */
+  url?: string
+  method?: 'GET' | 'POST'
+  headers?: Record<string, string>
+  body?: { [k: string]: unknown }
   charsPerTick?: number
-
-  /** tick 间隔（ms）（你当前已用 requestAnimationFrame，可删或保留兼容） */
   tickMs?: number
-
-  /**
-   * 从 SSE 的 ev.data 里提取“增量文本”
-   * - 如果服务端直接发纯文本：return evData
-   * - 如果服务端发 JSON：JSON.parse 后取 delta 字段
-   */
-  pickText?: (evData: string) => string // 把 ev.data => “本次增量文本”
-
-  /** 是否自动重连；默认 true（取决于 fetch-event-source 的重试机制） */
-  retry?: boolean // true：throw err 让库重试；false：直接 error 结束
+  pickText?: (evData: string) => string
+  retry?: boolean
 }
 
 export function createChatStream(options: TypewriterOptions) {
-  const CHAT_URL = 'http://localhost:5555/v1/chat/completions' as const
+  const CHAT_URL = options.url ?? 'http://localhost:3000/api/chat'
   // 标点停顿（ms）：让打字更像真人/ChatGPT
   const pauseMs = {
     comma: 60, // 逗号/顿号/分号/冒号的短停顿

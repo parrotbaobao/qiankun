@@ -1,9 +1,4 @@
-import { AfterViewInit, Component } from '@angular/core';
-import { NavigationEnd, Router } from '@angular/router';
-import { registerMicroApps, start } from 'qiankun';
-import { filter } from 'rxjs/operators';
-
-let qiankunStarted = false;
+import { Component } from '@angular/core';
 
 @Component({
   selector: 'app-home',
@@ -11,6 +6,6 @@ let qiankunStarted = false;
   styleUrls: ['./home.component.scss'],
 })
 export class HomeComponent {
-  constructor(private router: Router) { }
-
+  dialogOpen = false;
+  drawerOpen = false;
 }

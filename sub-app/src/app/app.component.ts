@@ -4,6 +4,7 @@ import { Subscription } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 import { abc } from '@your-org/my-shared-utils';
 import { MfeStateService } from './core/services/mfe-state.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'sub-root',
@@ -11,14 +12,16 @@ import { MfeStateService } from './core/services/mfe-state.service';
   styleUrls: ['./app.component.scss'],
 })
 export class AppComponent implements OnInit, OnDestroy {
-  title = 'sub-app';
+  title = 'sub1-app';
   currentLang: string = 'zh';
+  probeDialogOpen = false;
 
   private _sub = new Subscription();
 
   constructor(
     private translate: TranslateService,
     private mfeState: MfeStateService,
+    private router: Router,
   ) {
     this.translate.setDefaultLang('zh');
     this.translate.addLangs(['zh', 'en']);
@@ -29,9 +32,6 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    abc();
-
-    // 同步主应用推送的语言变更
     this._sub.add(
       this.mfeState.context$.pipe(
         map((ctx) => ctx.language),

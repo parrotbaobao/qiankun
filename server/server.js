@@ -16,7 +16,7 @@ app.use((req, res, next) => {
 });
 
 const MAIN_DIST = path.join(__dirname, '..', 'main-app', 'dist', 'main-app');
-const APP1_DIST = path.join(__dirname, '..', 'sub-app', 'dist', 'sub-app');
+const APP1_DIST = path.join(__dirname, '..', 'sub1-app', 'dist', 'sub1-app');
 const APP2_DIST = path.join(__dirname, '..', 'sub-app2', 'dist', 'sub-app2');
 
 app.get("/api/export/excel", exportExcelHandler);

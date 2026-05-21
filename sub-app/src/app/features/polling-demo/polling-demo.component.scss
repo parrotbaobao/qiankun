@@ -1,0 +1,237 @@
+.polling-demo {
+  max-width: 800px;
+  margin: 24px auto;
+  padding: 0 16px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #1a1a2e;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  code {
+    background: #f0f4ff;
+    color: #4361ee;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 16px;
+  }
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e8ecf0;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+// ── 按钮 ──────────────────────────────────────────────────────────────────────
+.btn {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: opacity 0.15s, transform 0.1s;
+  background: #e2e8f0;
+  color: #4a5568;
+
+  &:hover:not(:disabled) { opacity: 0.85; transform: translateY(-1px); }
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  &.btn-primary  { background: #4361ee; color: #fff; }
+  &.btn-success  { background: #38a169; color: #fff; }
+  &.btn-warn     { background: #ed8936; color: #fff; }
+  &.btn-danger   { background: #e53e3e; color: #fff; }
+  &.btn-sm       { padding: 5px 12px; font-size: 13px; }
+  &.active       { background: #4361ee; color: #fff; }
+}
+
+// ── 控制面板 ──────────────────────────────────────────────────────────────────
+.controls {
+  .row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+
+    &.interval-row { margin-top: 14px; }
+  }
+
+  .label {
+    font-size: 14px;
+    color: #718096;
+    white-space: nowrap;
+  }
+}
+
+// ── 状态卡片 ──────────────────────────────────────────────────────────────────
+.status-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+
+  .task-id { font-size: 13px; color: #718096; code { color: #4361ee; } }
+  .poll-count { font-size: 13px; color: #718096; strong { color: #2d3748; } }
+}
+
+.badge {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: auto;
+
+  &[data-status='pending']    { background: #edf2f7; color: #718096; }
+  &[data-status='queued']     { background: #ebf8ff; color: #3182ce; }
+  &[data-status='processing'] { background: #fffaf0; color: #dd6b20; }
+  &[data-status='done']       { background: #f0fff4; color: #276749; }
+}
+
+// ── 进度条 ────────────────────────────────────────────────────────────────────
+.progress-bar-wrap {
+  position: relative;
+  height: 22px;
+  background: #edf2f7;
+  border-radius: 11px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 11px;
+  transition: width 0.5s ease;
+  background: #a0aec0;
+
+  &[data-status='queued']     { background: #63b3ed; }
+  &[data-status='processing'] { background: linear-gradient(90deg, #ed8936, #f6ad55); }
+  &[data-status='done']       { background: #48bb78; }
+}
+
+.progress-label {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+// ── 流水线步骤 ────────────────────────────────────────────────────────────────
+.pipeline {
+  display: flex;
+  gap: 0;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    height: 2px;
+    background: #e2e8f0;
+    z-index: 0;
+  }
+}
+
+.step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #a0aec0;
+  position: relative;
+  z-index: 1;
+
+  .dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    border: 2px solid #e2e8f0;
+    transition: all 0.3s;
+  }
+
+  &.passed {
+    color: #48bb78;
+    .dot { background: #48bb78; border-color: #48bb78; }
+  }
+
+  &.active {
+    color: #ed8936;
+    font-weight: 700;
+    .dot {
+      background: #fff;
+      border-color: #ed8936;
+      box-shadow: 0 0 0 4px rgba(237, 137, 54, 0.2);
+      animation: pulse 1s ease-in-out infinite;
+    }
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(237, 137, 54, 0.2); }
+  50%       { box-shadow: 0 0 0 8px rgba(237, 137, 54, 0.1); }
+}
+
+// ── 代码块 ────────────────────────────────────────────────────────────────────
+.code-card {
+  h3 { font-size: 15px; margin: 0 0 12px; }
+  pre {
+    background: #1a1a2e;
+    color: #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-x: auto;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
+// ── 日志 ─────────────────────────────────────────────────────────────────────
+.log-card {
+  h3 {
+    font-size: 15px;
+    margin: 0 0 12px;
+    .log-count { font-size: 12px; color: #a0aec0; font-weight: 400; margin-left: 6px; }
+  }
+}
+
+.log-list {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.log-item {
+  display: flex;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-family: 'Fira Code', monospace;
+
+  .log-time { color: #a0aec0; white-space: nowrap; }
+  .log-text { color: #2d3748; }
+
+  &[data-type='success'] { background: #f0fff4; .log-text { color: #276749; } }
+  &[data-type='error']   { background: #fff5f5; .log-text { color: #c53030; } }
+  &[data-type='warn']    { background: #fffaf0; .log-text { color: #c05621; } }
+  &[data-type='info']    { background: #ebf8ff; .log-text { color: #2b6cb0; } }
+}
