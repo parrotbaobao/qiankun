@@ -25,7 +25,7 @@ export type TypewriterOptions = {
 };
 
 export class TypewriterSession {
-  private static readonly url = 'http://localhost:5555/v1/chat/completions';
+  private static readonly url = 'http://192.168.31.203:1234/v1/chat/completions';
 
   // 标点停顿（ms）：让打字更像真人/ChatGPT
   private pauseMs = {
@@ -133,8 +133,7 @@ export class TypewriterSession {
       },
 
       onerror: (err) => {
-        if (retry) throw err; // retry=true：抛出让库自动重连
-        this.subscriber?.error(err); // 否则：直接 error 结束
+        this.subscriber?.error(err); // 直接 error 结束，不抛出（抛出会触发无限重连）
       },
     });
   }

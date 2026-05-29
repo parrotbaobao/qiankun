@@ -79,12 +79,12 @@
         "compactMode": true
       },
       "stats": {
-        "loginCount": 49,
+        "loginCount": 52,
         "promptCount": 12,
         "chatCount": 89
       },
       "createdAt": "2024-06-01T09:30:00.000Z",
-      "lastLoginAt": "2026-05-19T08:57:59.367Z",
+      "lastLoginAt": "2026-05-29T07:10:38.992Z",
       "updatedAt": "2025-04-20T11:05:00.000Z"
     }
   ]

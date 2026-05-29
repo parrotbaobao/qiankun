@@ -85,7 +85,12 @@
       "Bash(cp -r /Users/liumeitong/Desktop/项目/未命名文件夹/qiankun/sub-app/src/app/core/services /Users/liumeitong/Desktop/项目/未命名文件夹/qiankun/sub-app2-copy/src/app/core/)",
       "Bash(cp -r /Users/liumeitong/Desktop/项目/未命名文件夹/qiankun/sub-app/src/assets/i18n/* /Users/liumeitong/Desktop/项目/未命名文件夹/qiankun/sub-app2-copy/src/assets/i18n/)",
       "Bash(echo \"npm install PID: $!\")",
-      "Bash(grep -v \"^import\\\\|^$\")"
+      "Bash(grep -v \"^import\\\\|^$\")",
+      "Bash(kill -9 58095)",
+      "Bash(git -C /Users/liumeitong/Desktop/项目/未命名文件夹/qiankun diff HEAD --stat)",
+      "Bash(git -C /Users/liumeitong/Desktop/项目/未命名文件夹/qiankun diff HEAD -- mock-server/server.js)",
+      "Bash(git -C /Users/liumeitong/Desktop/项目/未命名文件夹/qiankun diff HEAD -- sub-app3/src/views/AiChat.vue sub-app3/src/views/ChatPage.vue sub-app3/src/router/index.ts sub-app3/src/services/chat.service.ts)",
+      "Bash(git -C /Users/liumeitong/Desktop/项目/未命名文件夹/qiankun diff HEAD -- sub-app/src/app/features/charts/charts.component.ts)"
     ]
   }
 }

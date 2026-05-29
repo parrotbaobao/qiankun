@@ -1,16 +1,33 @@
 require('dotenv').config()
 const express = require('express')
-const cors = require('cors')
-const OpenAI = require('openai').default ?? require('openai')
+const cors    = require('cors')
+const fs      = require('fs')
+const path    = require('path')
+const crypto  = require('crypto')
+const OpenAI  = require('openai').default ?? require('openai')
 
-const app = express()
+const app  = express()
 const PORT = 3200
 
-app.use(cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'], allowedHeaders: ['Content-Type'] }))
+app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type'] }))
 app.use(express.json({ limit: '4mb' }))
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 function createClient() {
+    const useCloud = process.env.USE_CLOUD_FALLBACK === 'true'
+
+    // ── 优先：LM Studio 本地部署 ──────────────────────────────────────────────
+    if (!useCloud) {
+        const baseURL = process.env.LM_STUDIO_BASE_URL || 'http://192.168.31.203:1234/v1'
+        const model   = process.env.LM_STUDIO_MODEL    || 'google/gemma-3-4b'
+        return {
+            client: new OpenAI({ apiKey: 'lm-studio', baseURL }),
+            model,
+            provider: 'LM Studio',
+        }
+    }
+
+    // ── 备用：云端（USE_CLOUD_FALLBACK=true 时生效）──────────────────────────
     if (process.env.GROQ_API_KEY) {
         return {
             client: new OpenAI({ apiKey: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1' }),
@@ -25,8 +42,85 @@ function createClient() {
             provider: 'SiliconFlow',
         }
     }
-    throw new Error('未配置 API Key，请在 .env 中设置 GROQ_API_KEY 或 SILICONFLOW_API_KEY')
+    throw new Error('云端备用模式下未配置 GROQ_API_KEY 或 SILICONFLOW_API_KEY')
 }
+
+// ── Conversation DB（JSON 文件持久化）────────────────────────────────────────
+const CONV_DB = path.join(__dirname, 'conversations-db.json')
+
+function loadDb() {
+    if (!fs.existsSync(CONV_DB)) return {}
+    try { return JSON.parse(fs.readFileSync(CONV_DB, 'utf8')) } catch { return {} }
+}
+function saveDb(db) {
+    fs.writeFileSync(CONV_DB, JSON.stringify(db, null, 2))
+}
+
+// GET /api/conversations
+app.get('/api/conversations', (_req, res) => {
+    const db = loadDb()
+    const list = Object.values(db)
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .map(({ id, title, createdAt, updatedAt, messages }) => ({
+            id, title, createdAt, updatedAt, messageCount: messages.length,
+        }))
+    res.json({ conversations: list })
+})
+
+// POST /api/conversations  → 新建
+app.post('/api/conversations', (req, res) => {
+    const db = loadDb()
+    const id  = crypto.randomUUID()
+    const now = Date.now()
+    db[id] = { id, title: req.body?.title || '新对话', createdAt: now, updatedAt: now, messages: [] }
+    saveDb(db)
+    res.json({ conversation: db[id] })
+})
+
+// GET /api/conversations/:id
+app.get('/api/conversations/:id', (req, res) => {
+    const db   = loadDb()
+    const conv = db[req.params.id]
+    if (!conv) return res.status(404).json({ error: 'not found' })
+    res.json({ conversation: conv })
+})
+
+// PATCH /api/conversations/:id  → 改标题
+app.patch('/api/conversations/:id', (req, res) => {
+    const db   = loadDb()
+    const conv = db[req.params.id]
+    if (!conv) return res.status(404).json({ error: 'not found' })
+    if (req.body?.title) conv.title = req.body.title
+    conv.updatedAt = Date.now()
+    saveDb(db)
+    res.json({ conversation: conv })
+})
+
+// DELETE /api/conversations/:id
+app.delete('/api/conversations/:id', (req, res) => {
+    const db = loadDb()
+    if (!db[req.params.id]) return res.status(404).json({ error: 'not found' })
+    delete db[req.params.id]
+    saveDb(db)
+    res.status(204).end()
+})
+
+// POST /api/conversations/:id/messages  → 前端直连 LM Studio 后追加存档
+app.post('/api/conversations/:id/messages', (req, res) => {
+    const db   = loadDb()
+    const conv = db[req.params.id]
+    if (!conv) return res.status(404).json({ error: 'not found' })
+    const { userMessage, assistantMessage } = req.body
+    const now = Date.now()
+    if (userMessage)      conv.messages.push({ id: crypto.randomUUID(), role: 'user',      content: userMessage,      createdAt: now })
+    if (assistantMessage) conv.messages.push({ id: crypto.randomUUID(), role: 'assistant', content: assistantMessage, createdAt: now + 1 })
+    if (conv.messages.length <= 2 && userMessage) {
+        conv.title = userMessage.slice(0, 40) + (userMessage.length > 40 ? '…' : '')
+    }
+    conv.updatedAt = Date.now()
+    saveDb(db)
+    res.json({ conversation: conv })
+})
 
 // ── Session store ─────────────────────────────────────────────────────────────
 const sessions = new Map()
@@ -81,17 +175,55 @@ function sseSend(res, data) {
     res.write(`data: ${JSON.stringify(data)}\n\n`)
 }
 
+// ── POST /v1/chat/completions（OpenAI-compatible passthrough） ─────────────────
+app.post('/v1/chat/completions', async (req, res) => {
+    const { messages, temperature, max_tokens } = req.body
+    if (!messages?.length) return res.status(400).json({ error: 'messages is required' })
+
+    sseSetup(res)
+
+    try {
+        const { client, model } = createClient()
+        const stream = await client.chat.completions.create({
+            model, messages, stream: true,
+            temperature: temperature ?? 0.7,
+            max_tokens: max_tokens ?? 1024,
+        })
+        for await (const chunk of stream) {
+            res.write(`data: ${JSON.stringify(chunk)}\n\n`)
+        }
+        res.write('data: [DONE]\n\n')
+        res.end()
+    } catch (err) {
+        console.error('[completions error]', err.message)
+        res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`)
+        res.end()
+    }
+})
+
 // ── POST /api/chat ────────────────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
     const {
         message, history = [], resume,
         stage = 'warmup', mode = 'free',
         sessionId, systemPrompt,
+        conversationId,           // ← 新增：关联对话 ID
     } = req.body
 
     if (!message) return res.status(400).json({ error: 'message is required' })
 
     sseSetup(res)
+
+    // 如果传了 conversationId，从数据库读取历史
+    let conv = null
+    let contextHistory = history
+    if (conversationId) {
+        const db = loadDb()
+        conv = db[conversationId]
+        if (conv) {
+            contextHistory = conv.messages.map(m => ({ role: m.role, content: m.content }))
+        }
+    }
 
     try {
         const { client, model, provider } = createClient()
@@ -102,19 +234,19 @@ app.post('/api/chat', async (req, res) => {
             sessionHistory = sessions.get(sessionId)
         }
 
-        const contextHistory = sessionId ? sessionHistory : history
+        if (!conversationId) contextHistory = sessionId ? sessionHistory : history
         const sysPrompt = buildSystemPrompt(mode, stage, resume, systemPrompt)
 
-        const messages = [
+        const llmMessages = [
             { role: 'system', content: sysPrompt },
             ...contextHistory,
             { role: 'user', content: message },
         ]
 
-        console.log(`[${provider}] ${model} | mode=${mode} stage=${stage} history=${contextHistory.length}`)
+        console.log(`[${provider}] ${model} | mode=${mode} stage=${stage} conv=${conversationId ?? '-'} history=${contextHistory.length}`)
 
         const stream = await client.chat.completions.create({
-            model, messages, stream: true, temperature: 0.7, max_tokens: 1024,
+            model, messages: llmMessages, stream: true, temperature: 0.7, max_tokens: 1024,
         })
 
         let fullContent = ''
@@ -126,7 +258,24 @@ app.post('/api/chat', async (req, res) => {
             }
         }
 
-        if (sessionId) {
+        // 存储到对话数据库
+        if (conversationId && conv) {
+            const db = loadDb()
+            const c  = db[conversationId]
+            if (c) {
+                const now = Date.now()
+                c.messages.push({ id: crypto.randomUUID(), role: 'user',      content: message,     createdAt: now })
+                c.messages.push({ id: crypto.randomUUID(), role: 'assistant', content: fullContent,  createdAt: now + 1 })
+                // 第一条消息时用其内容做标题
+                if (c.messages.length === 2) {
+                    c.title = message.slice(0, 40) + (message.length > 40 ? '…' : '')
+                }
+                c.updatedAt = now
+                saveDb(db)
+            }
+        }
+
+        if (sessionId && !conversationId) {
             sessionHistory.push({ role: 'user', content: message })
             sessionHistory.push({ role: 'assistant', content: fullContent })
         }
@@ -135,6 +284,30 @@ app.post('/api/chat', async (req, res) => {
         res.end()
     } catch (err) {
         console.error('[chat error]', err.message)
+        if (err.status === 403 || err.status === 401 || process.env.USE_MOCK === 'true') {
+            const mock = `（模拟回复）收到你的消息："${message}"。\n\n当前 API Key 无效（${err.message}）。\n请在 \`.env\` 中更新 **GROQ_API_KEY** 或 **SILICONFLOW_API_KEY** 后重启服务。`
+
+            // mock 模式也要存储
+            if (conversationId && conv) {
+                const db = loadDb()
+                const c  = db[conversationId]
+                if (c) {
+                    const now = Date.now()
+                    c.messages.push({ id: crypto.randomUUID(), role: 'user',      content: message, createdAt: now })
+                    c.messages.push({ id: crypto.randomUUID(), role: 'assistant', content: mock,     createdAt: now + 1 })
+                    if (c.messages.length === 2) c.title = message.slice(0, 40) + (message.length > 40 ? '…' : '')
+                    c.updatedAt = now
+                    saveDb(db)
+                }
+            }
+
+            for (const ch of mock) {
+                sseSend(res, { type: 'text', content: ch })
+                await new Promise(r => setTimeout(r, 18))
+            }
+            sseSend(res, { type: 'done' })
+            return res.end()
+        }
         sseSend(res, { type: 'error', message: err.message })
         res.end()
     }
@@ -199,9 +372,17 @@ app.get('/api/provider', (_req, res) => {
 })
 
 app.listen(PORT, () => {
-    const groq = process.env.GROQ_API_KEY ? '✓ Groq' : '✗ Groq (未配置)'
-    const sf   = process.env.SILICONFLOW_API_KEY ? '✓ SiliconFlow' : '✗ SiliconFlow (未配置)'
-    console.log(`AI server → http://localhost:${PORT}`)
-    console.log(`  ${groq}`)
-    console.log(`  ${sf}`)
+    const useCloud = process.env.USE_CLOUD_FALLBACK === 'true'
+    if (!useCloud) {
+        const baseURL = process.env.LM_STUDIO_BASE_URL || 'http://192.168.31.203:1234/v1'
+        const model   = process.env.LM_STUDIO_MODEL    || 'google/gemma-3-4b'
+        console.log(`AI server → http://localhost:${PORT}`)
+        console.log(`  ✓ LM Studio  ${baseURL}  model=${model}`)
+    } else {
+        const groq = process.env.GROQ_API_KEY       ? '✓ Groq'        : '✗ Groq (未配置)'
+        const sf   = process.env.SILICONFLOW_API_KEY ? '✓ SiliconFlow' : '✗ SiliconFlow (未配置)'
+        console.log(`AI server → http://localhost:${PORT}  [cloud fallback]`)
+        console.log(`  ${groq}`)
+        console.log(`  ${sf}`)
+    }
 })

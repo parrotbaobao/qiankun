@@ -1,0 +1,60 @@
+<div class="charts-page">
+  <div class="charts-header">
+    <div class="charts-header__left">
+      <h2>图表中心</h2>
+      <p>22 个图表，含 5000 天 × 12 系列大数据量。每 {{ refreshInterval }}s 全量刷新，用于性能优化练习。</p>
+    </div>
+    <div class="charts-header__ctrl">
+      <span class="refresh-badge" [class.active]="autoRefresh">
+        {{ autoRefresh ? '自动刷新中' : '已暂停' }}
+      </span>
+      <span class="refresh-time" *ngIf="lastRefresh">上次：{{ lastRefresh }}</span>
+      <button class="ctrl-btn" (click)="toggleRefresh()">
+        {{ autoRefresh ? '暂停刷新' : '开启刷新' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="charts-loading" *ngIf="loading">
+    <div class="spinner"></div>
+    <span>加载中（数据量较大，请稍候…）</span>
+  </div>
+
+  <div class="charts-error" *ngIf="error">{{ error }}</div>
+
+  <div class="charts-grid" *ngIf="!loading && !error">
+    <div class="section-label">折线图 · 大数据量（5000 天）</div>
+
+    <div class="chart-card wide"><div #chartEl class="chart-canvas tall"></div></div>
+    <div class="chart-card wide"><div #chartEl class="chart-canvas tall"></div></div>
+    <div class="chart-card wide"><div #chartEl class="chart-canvas tall"></div></div>
+
+    <div class="section-label">柱状图</div>
+
+    <div class="chart-card wide"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card wide"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+
+    <div class="section-label">折线图 · 中等数据量</div>
+
+    <div class="chart-card wide"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+
+    <div class="section-label">饼图</div>
+
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+    <div class="chart-card"><div #chartEl class="chart-canvas"></div></div>
+  </div>
+</div>

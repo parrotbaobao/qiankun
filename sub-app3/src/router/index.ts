@@ -17,12 +17,17 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/chat/:id',
     name: 'chat',
-    component: () => import('../views/ChatPage.vue'),
+    component: () => import('../views/ai-chat/ChatPage.vue'),
+  },
+  {
+    path: '/conversations',
+    name: 'conversations',
+    component: () => import('../views/ConversationsPage.vue'),
   },
   {
     path: '/ai',
     name: 'ai',
-    component: () => import('../views/AiChat.vue'),
+    component: () => import('../views/ai-chat/AiChat.vue'),
   },
   {
     path: '/ui-demo',

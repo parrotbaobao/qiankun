@@ -10,10 +10,12 @@ export type TypewriterOptions = {
   tickMs?: number
   pickText?: (evData: string) => string
   retry?: boolean
+  maxRetries?: number
+  onReconnecting?: (attempt: number) => void
 }
 
 export function createChatStream(options: TypewriterOptions) {
-  const CHAT_URL = options.url ?? 'http://localhost:3000/api/chat'
+  const CHAT_URL = options.url ?? 'http://192.168.31.203:1234/v1/chat/completions'
   // 标点停顿（ms）：让打字更像真人/ChatGPT
   const pauseMs = {
     comma: 60, // 逗号/顿号/分号/冒号的短停顿
@@ -39,17 +41,19 @@ export function createChatStream(options: TypewriterOptions) {
   let rafId: number | null = null
 
   const text$ = new Observable<string>((subscriber) => {
-    const { body, pickText = (s) => s, retry = true } = options // 解构 options
+    const { body, pickText = (s) => s, retry = true, maxRetries = 3, onReconnecting } = options
 
-    ctrl = new AbortController() // 取消控制器（✅ 现在会传给 fetchEventSource 的 signal）
-    queue = [] // 字符队列：存放还没显示的字符
-    streamClosed = false // SSE 是否已结束（onclose 时置为 true）
-    isPumping = false // 是否正在“吐字”
-    display = '' // 当前已经渲染出来的完整文本
-    lastFrameTs = performance.now() // 上一帧时间戳
-    nextUiFlushTs = 0 // 下一次允许刷新 UI 的时间戳（用于限频）
-    charBudget = 0 // “字符预算”：dt * speed 累积后决定本帧吐多少字符
-    wasHidden = document.hidden // 记录上一次可见性：只在 hidden->visible 时补齐
+    let retryCount = 0
+
+    ctrl = new AbortController()
+    queue = []
+    streamClosed = false
+    isPumping = false
+    display = ''
+    lastFrameTs = performance.now()
+    nextUiFlushTs = 0
+    charBudget = 0
+    wasHidden = document.hidden
 
     const onVisibilityChange = () => {
       const nowHidden = document.hidden
@@ -70,6 +74,7 @@ export function createChatStream(options: TypewriterOptions) {
       headers: {
         'content-type': 'application/json',
         accept: 'text/event-stream',
+        ...(options.headers ?? {}),
       },
       body: body == null ? null : typeof body === 'string' ? body : JSON.stringify(body),
       signal: ctrl.signal,
@@ -92,8 +97,23 @@ export function createChatStream(options: TypewriterOptions) {
       },
 
       onerror: (err) => {
-        if (retry) throw err // retry=true：抛出让库自动重连
-        subscriber.error(err) // 否则：直接 error 结束
+        if (retryCount < maxRetries) {
+          retryCount++
+          // 取消当前正在进行的打字动画
+          if (timerId != null) { clearTimeout(timerId); timerId = null }
+          if (rafId != null) { cancelAnimationFrame(rafId); rafId = null }
+          // 重置流状态，准备重新接收
+          display = ''
+          queue = []
+          streamClosed = false
+          isPumping = false
+          charBudget = 0
+          lastFrameTs = performance.now()
+          onReconnecting?.(retryCount)
+          // 指数退避：1s / 2s / 4s
+          return Math.pow(2, retryCount - 1) * 1000
+        }
+        subscriber.error(err)
       },
     })
     return () => {

@@ -7,6 +7,9 @@ import {
   qiankunWindow,
   type QiankunProps,
 } from 'vite-plugin-qiankun/dist/helper'
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
+import './styles/global.css'
+
 
 import App from './App.vue'
 import router from './router'

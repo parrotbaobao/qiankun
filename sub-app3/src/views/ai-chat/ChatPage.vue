@@ -1,22 +1,24 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { usePromptStore } from '../stores/prompt'
-import AiChat from '../views/AiChat.vue'
-import { extractVariables, fillTemplate, formatVarLabel } from '../utils/template'
-import type { Prompt } from '../services/prompt.service'
+import { usePromptStore } from '../../stores/prompt'
+import AiChat from './AiChat.vue'
+import { extractVariables, fillTemplate, formatVarLabel } from '../../utils/template'
+import type { Prompt } from '../../services/prompt.service'
+import { ConversationService } from '../../services/conversation.service'
+import type { ConvSummary } from '../../services/conversation.service'
 
-const route  = useRoute()
+const route = useRoute()
 const router = useRouter()
-const store  = usePromptStore()
+const store = usePromptStore()
 
 // ── Prompt ────────────────────────────────────────────────────────────────────
 const promptId = computed(() => Number(route.params.id))
-const prompt   = computed(() => store.getById(promptId.value))
+const prompt = computed(() => store.getById(promptId.value))
 
 // ── Left panel – Prompt editor ────────────────────────────────────────────────
 const editableContent = ref('')
-const varValues       = ref<Record<string, string>>({})
+const varValues = ref<Record<string, string>>({})
 
 const variables = computed(() => extractVariables(editableContent.value))
 
@@ -33,25 +35,25 @@ watch(prompt, (p) => {
 
 // ── Left panel – Model settings ───────────────────────────────────────────────
 const APIS = [
-  { value: 'http://localhost:3000/api/chat', label: '面试对话' },
-  { value: 'http://localhost:3000/api/ask',  label: '通用问答' },
+  { value: 'http://localhost:3200/api/chat', label: '面试对话' },
+  { value: 'http://localhost:3200/api/chat', label: '通用问答' },
 ]
-const selectedApi = ref('http://localhost:3000/api/chat')
+const selectedApi = ref('http://localhost:3200/api/chat')
 
 const MODELS = [
-  { value: 'google/gemma-4-e4b',                label: 'Gemma 3 4B' },
-  { value: 'google/gemma-3-12b',               label: 'Gemma 3 12B' },
+  { value: 'google/gemma-3-4b', label: 'Gemma 3 4B (Local)' },
+  { value: 'google/gemma-3-12b', label: 'Gemma 3 12B' },
   { value: 'meta-llama/llama-3.1-8b-instruct', label: 'Llama 3.1 8B' },
-  { value: 'deepseek/deepseek-r1',             label: 'DeepSeek R1' },
-  { value: 'qwen/qwen2.5-7b-instruct',         label: 'Qwen 2.5 7B' },
+  { value: 'deepseek/deepseek-r1', label: 'DeepSeek R1' },
+  { value: 'qwen/qwen2.5-7b-instruct', label: 'Qwen 2.5 7B' },
 ]
-const model       = ref('google/gemma-4-e4b')
+const model = ref('google/gemma-3-4b')
 const temperature = ref(0.7)
-const maxTokens   = ref(512)
-const topP        = ref(1.0)
+const maxTokens = ref(512)
+const topP = ref(1.0)
 
 // ── Left panel – Save ─────────────────────────────────────────────────────────
-const saving     = ref(false)
+const saving = ref(false)
 const savedFlash = ref(false)
 
 async function savePrompt() {
@@ -146,6 +148,56 @@ function runPrompt() {
 // ── Panel collapse ────────────────────────────────────────────────────────────
 const leftOpen = ref(true)
 
+// ── History panel ─────────────────────────────────────────────────────────────
+const historyOpen = ref(false)
+const currentConvId = ref('')
+const convList = ref<ConvSummary[]>([])
+const historyLoading = ref(false)
+
+async function loadHistory() {
+  historyLoading.value = true
+  try { convList.value = await ConversationService.list() } catch { /* 未登录时静默 */ }
+  finally { historyLoading.value = false }
+}
+
+async function toggleHistory() {
+  historyOpen.value = !historyOpen.value
+  if (!historyOpen.value) return
+
+  await loadHistory()
+
+  // 自动选中：有历史就选最近一条，没有就自动新建
+  if (!currentConvId.value) {
+    if (convList.value.length > 0) {
+      currentConvId.value = convList.value[0].id
+    } else {
+      await handleNewConv()
+    }
+  }
+}
+
+async function handleNewConv() {
+  const conv = await ConversationService.create()
+  currentConvId.value = conv.id
+  await loadHistory()
+}
+
+function handleSelectConv(id: string) {
+  if (currentConvId.value === id) return
+  currentConvId.value = id
+}
+
+function handleConvUpdated() {
+  if (historyOpen.value) loadHistory()
+}
+
+function formatTime(ts: number) {
+  const d = new Date(ts), now = new Date()
+  if (d.toDateString() === now.toDateString())
+    return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
+}
+
 onMounted(async () => {
   if (!store.prompts.length) await store.fetchPrompts()
 })
@@ -172,6 +224,9 @@ onMounted(async () => {
         <button class="tb-btn tb-btn--ghost" @click="leftOpen = !leftOpen">
           {{ leftOpen ? '◀ 收起' : '▶ 展开' }}
         </button>
+        <button class="tb-btn" :class="{ 'tb-btn--active': historyOpen }" @click="toggleHistory">
+          历史对话
+        </button>
       </div>
     </header>
 
@@ -193,12 +248,8 @@ onMounted(async () => {
               <span>SYSTEM</span>
               <span class="char-count">{{ editableContent.length }} 字符</span>
             </div>
-            <textarea
-              v-model="editableContent"
-              class="system-textarea"
-              placeholder="输入 System Prompt，用 {{变量名}} 定义变量..."
-              spellcheck="false"
-            />
+            <textarea v-model="editableContent" class="system-textarea" placeholder="输入 System Prompt，用 {{变量名}} 定义变量..."
+              spellcheck="false" />
           </section>
 
           <!-- USER MESSAGE template -->
@@ -207,18 +258,9 @@ onMounted(async () => {
               <span>USER MESSAGE</span>
               <span class="label-hint">可含变量</span>
             </div>
-            <textarea
-              v-model="userMessage"
-              class="user-msg-textarea"
-              rows="3"
-              placeholder="输入用户消息模板，点击 ▶ 运行发送..."
-              spellcheck="false"
-            />
-            <button
-              class="btn-run"
-              :disabled="!filledUserMessage.trim()"
-              @click="runPrompt"
-            >
+            <textarea v-model="userMessage" class="user-msg-textarea" rows="3" placeholder="输入用户消息模板，点击 ▶ 运行发送..."
+              spellcheck="false" />
+            <button class="btn-run" :disabled="!filledUserMessage.trim()" @click="runPrompt">
               ▶ 发送
             </button>
           </section>
@@ -232,12 +274,8 @@ onMounted(async () => {
             <div class="var-list">
               <div v-for="v in allVariables" :key="v" class="var-row">
                 <span class="var-key" :title="v">{{ formatVarLabel(v) }}</span>
-                <input
-                  v-model="varValues[v]"
-                  class="var-input"
-                  :class="{ 'var-input--empty': !varValues[v] }"
-                  :placeholder="v"
-                />
+                <input v-model="varValues[v]" class="var-input" :class="{ 'var-input--empty': !varValues[v] }"
+                  :placeholder="v" />
               </div>
             </div>
           </section>
@@ -298,18 +336,30 @@ onMounted(async () => {
 
       <!-- ═══ RIGHT PANEL – Chat ═══ -->
       <div class="pg-right">
-        <AiChat
-          ref="chatRef"
-          :system-prompt="filledPrompt"
-          :title="prompt.title"
-          :temperature="temperature"
-          :model="model"
-          :max-tokens="maxTokens"
-          :top-p="topP"
-          :hide-header="true"
-          :url="selectedApi"
-        />
+        <AiChat ref="chatRef" :key="currentConvId || '__no_conv__'" :system-prompt="filledPrompt" :title="prompt.title"
+          :temperature="temperature" :model="model" :max-tokens="maxTokens" :top-p="topP" :hide-header="true"
+          :url="selectedApi" :conversation-id="currentConvId || undefined" @conversation-updated="handleConvUpdated" />
       </div>
+
+      <!-- ═══ HISTORY PANEL ═══ -->
+      <template v-if="historyOpen">
+        <div class="pg-divider" />
+        <aside class="pg-history">
+          <div class="hist-top">
+            <span class="hist-title">历史对话</span>
+            <button class="hist-new" @click="handleNewConv">＋ 新建</button>
+          </div>
+          <div v-if="historyLoading" class="hist-empty">加载中…</div>
+          <div v-else-if="!convList.length" class="hist-empty">暂无记录</div>
+          <div v-else class="hist-list">
+            <div v-for="conv in convList" :key="conv.id" class="hist-item"
+              :class="{ 'hist-item--active': currentConvId === conv.id }" @click="handleSelectConv(conv.id)">
+              <p class="hist-item-title">{{ conv.title }}</p>
+              <span class="hist-item-meta">{{ conv.messageCount }} 条 · {{ formatTime(conv.updatedAt) }}</span>
+            </div>
+          </div>
+        </aside>
+      </template>
 
     </div>
 
@@ -356,7 +406,7 @@ onMounted(async () => {
 .pg-root {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 49px);
+  height: calc(100vh - 150px);
   background: #f9fafb;
   overflow: hidden;
 }
@@ -380,7 +430,9 @@ onMounted(async () => {
   flex: 1;
 }
 
-.tb-icon { font-size: 18px; }
+.tb-icon {
+  font-size: 18px;
+}
 
 .tb-name {
   font-size: 14px;
@@ -420,7 +472,10 @@ onMounted(async () => {
   color: #4f46e5;
 }
 
-.tb-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.tb-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .tb-btn--flash {
   border-color: #10b981 !important;
@@ -432,6 +487,12 @@ onMounted(async () => {
   border-color: transparent;
   background: transparent;
   color: #9ca3af;
+}
+
+.tb-btn--active {
+  border-color: #4f46e5;
+  color: #4f46e5;
+  background: #ede9fe;
 }
 
 /* ── Center loading ── */
@@ -464,7 +525,9 @@ onMounted(async () => {
   flex-direction: column;
 }
 
-.pg-left--collapsed { width: 0; }
+.pg-left--collapsed {
+  width: 0;
+}
 
 .pg-left-inner {
   width: 320px;
@@ -566,7 +629,9 @@ onMounted(async () => {
   transition: background 0.15s, opacity 0.15s;
 }
 
-.btn-run:hover:not(:disabled) { background: #4338ca; }
+.btn-run:hover:not(:disabled) {
+  background: #4338ca;
+}
 
 .btn-run:disabled {
   opacity: 0.4;
@@ -631,7 +696,9 @@ onMounted(async () => {
   background: #fff;
 }
 
-.var-input:focus { border-color: #4f46e5; }
+.var-input:focus {
+  border-color: #4f46e5;
+}
 
 .var-input--empty {
   border-color: #fde68a;
@@ -651,7 +718,9 @@ onMounted(async () => {
   transition: border-color 0.15s;
 }
 
-.ctrl-select:focus { border-color: #4f46e5; }
+.ctrl-select:focus {
+  border-color: #4f46e5;
+}
 
 .ctrl-range {
   width: 100%;
@@ -688,7 +757,9 @@ onMounted(async () => {
   transition: border-color 0.15s;
 }
 
-.ctrl-number:focus { border-color: #4f46e5; }
+.ctrl-number:focus {
+  border-color: #4f46e5;
+}
 
 /* ── Action buttons ── */
 .action-btn {
@@ -708,7 +779,9 @@ onMounted(async () => {
   color: #4f46e5;
 }
 
-.action-btn--outline:hover { background: #ede9fe; }
+.action-btn--outline:hover {
+  background: #ede9fe;
+}
 
 .action-btn--ghost {
   border: 1px solid #e5e7eb;
@@ -716,7 +789,10 @@ onMounted(async () => {
   color: #6b7280;
 }
 
-.action-btn--ghost:hover { border-color: #9ca3af; color: #374151; }
+.action-btn--ghost:hover {
+  border-color: #9ca3af;
+  color: #374151;
+}
 
 /* ── Divider ── */
 .pg-divider {
@@ -732,6 +808,99 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   background: #fff;
+}
+
+/* ── History panel ── */
+.pg-history {
+  width: 240px;
+  flex-shrink: 0;
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.hist-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.hist-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.hist-new {
+  font-size: 12px;
+  padding: 3px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  color: #4f46e5;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.hist-new:hover {
+  background: #ede9fe;
+  border-color: #4f46e5;
+}
+
+.hist-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hist-item {
+  padding: 8px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.hist-item:hover {
+  background: #efefef;
+}
+
+.hist-item--active {
+  background: #ede9fe;
+}
+
+.hist-item--active .hist-item-title {
+  color: #4f46e5;
+}
+
+.hist-item-title {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hist-item-meta {
+  font-size: 10.5px;
+  color: #9ca3af;
+}
+
+.hist-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: #9ca3af;
 }
 
 /* ── Modal ── */
@@ -813,7 +982,9 @@ onMounted(async () => {
   transition: border-color 0.15s;
 }
 
-.field input:focus { border-color: #4f46e5; }
+.field input:focus {
+  border-color: #4f46e5;
+}
 
 .readonly-ta {
   width: 100%;
@@ -829,8 +1000,15 @@ onMounted(async () => {
   box-sizing: border-box;
 }
 
-.req { color: #ef4444; }
-.form-error { font-size: 13px; color: #ef4444; margin: 0; }
+.req {
+  color: #ef4444;
+}
+
+.form-error {
+  font-size: 13px;
+  color: #ef4444;
+  margin: 0;
+}
 
 .btn-close {
   padding: 4px 8px;
@@ -843,7 +1021,10 @@ onMounted(async () => {
   transition: all 0.15s;
 }
 
-.btn-close:hover { background: #f3f4f6; color: #374151; }
+.btn-close:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
 
 .btn-ghost {
   padding: 8px 16px;
@@ -856,7 +1037,10 @@ onMounted(async () => {
   transition: all 0.15s;
 }
 
-.btn-ghost:hover { border-color: #9ca3af; color: #374151; }
+.btn-ghost:hover {
+  border-color: #9ca3af;
+  color: #374151;
+}
 
 .btn-primary {
   display: flex;
@@ -873,8 +1057,14 @@ onMounted(async () => {
   transition: background 0.15s;
 }
 
-.btn-primary:hover:not(:disabled) { background: #4338ca; }
-.btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
+.btn-primary:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
 
 /* ── Spinners ── */
 .spin {
@@ -891,11 +1081,15 @@ onMounted(async () => {
   display: inline-block;
   width: 13px;
   height: 13px;
-  border: 2px solid rgba(255,255,255,0.4);
+  border: 2px solid rgba(255, 255, 255, 0.4);
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 </style>

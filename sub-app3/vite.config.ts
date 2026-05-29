@@ -16,6 +16,15 @@ export default defineConfig({
     headers: { 'Access-Control-Allow-Origin': '*' },
     origin: 'http://localhost:5174',
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'echarts': ['echarts']
+        }
+      }
+    }
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

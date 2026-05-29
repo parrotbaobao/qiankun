@@ -33,48 +33,7 @@ async function handleLogout() {
     </span>
     <button class="btn-logout" @click="handleLogout">退出登录</button>
   </div>
-  <!-- CSS 探针栏：所有页面常驻 -->
-  <div v-if="auth.isLoggedIn && route.name !== 'login'" class="probe-bar">
-    <span class="probe-id">📦 子应用3 (Vue)</span>
-    <span class="probe-sep">·</span>
-    <span class="probe-item">
-      <em class="probe-tag tag-c">C</em>
-      <button class="conflict-btn">类名冲突</button>
-    </span>
-    <span class="probe-item">
-      <em class="probe-tag tag-b">B</em>
-      <span class="probe-var-swatch" :style="{ background: `var(--shared-color, #409eff)` }">
-        --shared-color
-      </span>
-    </span>
-    <span class="probe-item">
-      <em class="probe-tag tag-d">D</em>
-      <span class="probe-spinner"></span>
-    </span>
-    <span class="probe-item">
-      <em class="probe-tag tag-a">A</em>
-      <button class="probe-dialog-btn" @click="probeDialogOpen = true">Portal弹窗</button>
-    </span>
-    <span class="probe-hint">切换主应用沙箱模式观察变化</span>
-  </div>
-
   <router-view />
-
-  <!-- 探针 Portal 弹窗（El-Plus，挂到 body，experimental/strict 下丢样式） -->
-  <el-dialog
-    v-model="probeDialogOpen"
-    title="📦 子应用3 · Portal 弹窗"
-    width="420px"
-    append-to-body
-  >
-    <p>此弹窗通过 El-Plus Portal 挂到 <code>body</code>。</p>
-    <p><b>none</b>：✅ 样式正常</p>
-    <p><b>experimental</b>：❌ 选择器前缀不匹配 body 中的元素，样式丢失</p>
-    <p><b>strict</b>：❌ Shadow DOM 完全隔离，body 中元素无样式</p>
-    <template #footer>
-      <el-button @click="probeDialogOpen = false">关闭</el-button>
-    </template>
-  </el-dialog>
 </template>
 
 <style scoped>

@@ -20,6 +20,10 @@ const routes: Routes = [
     path: 'ui-demo',
     loadChildren: () => import('./features/ui-demo/ui-demo.module').then((m) => m.UiDemoModule),
   },
+  {
+    path: 'charts',
+    loadChildren: () => import('./features/charts/charts.module').then((m) => m.ChartsModule),
+  },
   { path: '', component: HomeComponent, pathMatch: 'full' },
   { path: '**', component: HomeComponent },];
 
