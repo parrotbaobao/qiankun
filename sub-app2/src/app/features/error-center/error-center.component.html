@@ -1,97 +1,79 @@
-<div class="ec-page">
-  <!-- Header -->
-  <div class="ec-header">
-    <div>
-      <h1 class="ec-header__title">{{ 'error.title' | translate }}</h1>
-      <p class="ec-header__sub">{{ 'error.subtitle' | translate }}</p>
-    </div>
+<div class="devui-home sub2-theme">
+  <div class="banner">
+    <h2>🟠 子应用 2 sub-app2 · DevUI 橙色主题</h2>
+    <p>第三个项目，也用 ng-devui，做成橙色。当 sandbox 模式不同时，重点观察主应用按钮、Tag、Tab 是否被这套橙色污染。</p>
   </div>
 
-  <!-- Toolbar -->
-  <div class="ec-toolbar">
-    <div class="search-wrap">
-      <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      <input
-        class="search-input"
-        type="text"
-        [(ngModel)]="keyword"
-        (ngModelChange)="onKeywordChange($event)"
-        [placeholder]="'error.search' | translate"
-      />
+  <section class="card">
+    <h3>① Button</h3>
+    <div class="row">
+      <d-button bsStyle="primary" (btnClick)="handleClick('primary')">主要按钮</d-button>
+      <d-button bsStyle="common" (btnClick)="handleClick('common')">普通按钮</d-button>
+      <d-button bsStyle="danger" (btnClick)="handleClick('danger')">危险按钮</d-button>
+      <d-button bsStyle="text" (btnClick)="handleClick('text')">文字按钮</d-button>
     </div>
+  </section>
 
-    <select class="service-select" [(ngModel)]="selectedService" (ngModelChange)="onServiceChange()">
-      <option value="">{{ 'error.allServices' | translate }}</option>
-      <option *ngFor="let s of services" [value]="s">{{ s }}</option>
-    </select>
-
-    <span class="total-badge" *ngIf="!loading">
-      {{ 'error.total' | translate: { count: total } }}
-    </span>
-  </div>
-
-  <!-- Table -->
-  <div class="ec-table-wrap">
-    <div *ngIf="loading" class="ec-loading">
-      <div class="spinner"></div>
-      <span>{{ 'error.loading' | translate }}</span>
+  <section class="card">
+    <h3>② Input</h3>
+    <div class="row">
+      <d-input [(ngModel)]="inputValue" placeholder="子应用 2 输入框"></d-input>
+      <span class="value">值：{{ inputValue }}</span>
     </div>
+  </section>
 
-    <table class="ec-table" *ngIf="!loading">
+  <section class="card">
+    <h3>③ Tag</h3>
+    <div class="row">
+      <d-tag *ngFor="let t of tags" [tag]="t.name" [customColor]="t.color"></d-tag>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>④ Alert</h3>
+    <d-alert *ngIf="showAlert" [type]="'warning'" [closeable]="true" (closeEvent)="showAlert = false">
+      这是子应用 2 的 Alert（橙色警告条）
+    </d-alert>
+    <d-button *ngIf="!showAlert" bsStyle="text" (btnClick)="showAlert = true">重新显示</d-button>
+  </section>
+
+  <section class="card">
+    <h3>⑤ DatePicker</h3>
+    <div class="row">
+      <d-datepicker [(ngModel)]="selectedDate" placeholder="选择日期"></d-datepicker>
+      <span class="value">选中：{{ selectedDate | date:'yyyy-MM-dd' }}</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>⑥ Tabs</h3>
+    <d-tabs [(activeTab)]="activeTab">
+      <d-tab tabId="tab1" title="第一项">sub-app2 Tab 内容 1</d-tab>
+      <d-tab tabId="tab2" title="第二项">sub-app2 Tab 内容 2</d-tab>
+      <d-tab tabId="tab3" title="第三项">sub-app2 Tab 内容 3</d-tab>
+    </d-tabs>
+  </section>
+
+  <section class="card">
+    <h3>⑦ DataTable</h3>
+    <table class="devui-table">
       <thead>
-        <tr>
-          <th>{{ 'error.code' | translate }}</th>
-          <th>{{ 'error.service' | translate }}</th>
-          <th>{{ 'error.httpStatus' | translate }}</th>
-          <th>{{ 'error.description' | translate }}</th>
-          <th style="width: 36px"></th>
-        </tr>
+        <tr><th>ID</th><th>名称</th><th>状态</th><th>日期</th></tr>
       </thead>
       <tbody>
-        <ng-container *ngFor="let item of errors">
-          <tr class="ec-row" [class.ec-row--expanded]="expandedCode === item.code" (click)="toggleExpand(item.code)">
-            <td>
-              <code class="error-code">{{ item.code }}</code>
-            </td>
-            <td>
-              <span class="service-tag">{{ item.service }}</span>
-            </td>
-            <td>
-              <span class="http-status" [ngClass]="statusClass(item.httpStatus)">
-                {{ item.httpStatus }}
-              </span>
-            </td>
-            <td class="desc-cell">{{ getDesc(item) }}</td>
-            <td class="expand-cell">
-              <svg class="chevron" [class.chevron--open]="expandedCode === item.code" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-            </td>
-          </tr>
-          <tr class="solution-row" *ngIf="expandedCode === item.code">
-            <td colspan="5">
-              <div class="solution-body">
-                <span class="solution-label">{{ 'error.solution' | translate }}</span>
-                <p class="solution-text">{{ getSolution(item) }}</p>
-              </div>
-            </td>
-          </tr>
-        </ng-container>
-
-        <tr *ngIf="errors.length === 0">
-          <td colspan="5" class="empty-cell">{{ 'error.empty' | translate }}</td>
+        <tr *ngFor="let r of rows">
+          <td>{{ r.id }}</td>
+          <td>{{ r.name }}</td>
+          <td><d-tag [tag]="r.status" [customColor]="r.status === '激活' ? '#e65100' : '#9e9e9e'"></d-tag></td>
+          <td>{{ r.date }}</td>
         </tr>
       </tbody>
     </table>
-  </div>
+  </section>
 
-  <!-- Pagination -->
-  <div class="ec-pagination" *ngIf="totalPages > 1">
-    <button class="page-btn" [disabled]="page === 1" (click)="onPageChange(page - 1)">‹</button>
-    <button
-      *ngFor="let p of pages"
-      class="page-btn"
-      [class.page-btn--active]="p === page"
-      (click)="onPageChange(p)"
-    >{{ p }}</button>
-    <button class="page-btn" [disabled]="page === totalPages" (click)="onPageChange(page + 1)">›</button>
-  </div>
+  <section class="card conflict">
+    <h3>⑧ 同名样式冲突点（重点观察）</h3>
+    <p>下面是用相同 class <code>.devui-brand-btn</code> 的按钮。子应用 2 是橙。</p>
+    <button class="devui-brand-btn">同名 class 按钮（子应用 2 橙）</button>
+  </section>
 </div>

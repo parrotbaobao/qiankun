@@ -90,8 +90,6 @@ const reactiveMap: WeakMap<object, object> = new WeakMap()
 const IS_REACTIVE = '__v_isReactive'
 const RAW = '__v_raw'
 
-type ReactiveFlags = typeof IS_REACTIVE | typeof RAW
-
 function isObject(val: unknown): val is object {
   return typeof val === 'object' && val !== null
 }

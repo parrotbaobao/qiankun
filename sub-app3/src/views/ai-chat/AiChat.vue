@@ -3,19 +3,14 @@
 
         <header v-if="!hideHeader" class="chat-header">
             <div class="chat-header-icon">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                </svg>
+                <IconBolt :size="15" />
             </div>
             <span>{{ title || 'AI 助手' }}</span>
         </header>
         <!-- 空态 -->
         <div v-if="!displayMessages.length" class="chat-empty">
             <div class="chat-empty-icon">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
+                <IconChat :size="36" stroke-width="1.2" />
             </div>
             <p>有什么我可以帮你？</p>
         </div>
@@ -44,15 +39,10 @@
                     @input="autoResize" />
                 <div class="input-btns">
                     <button v-if="streaming" class="btn-stop" @click="stop()">
-                        <svg width="11" height="11" viewBox="0 0 11 11" fill="currentColor">
-                            <rect width="11" height="11" rx="2" />
-                        </svg>
+                        <IconStopSquare :size="11" />
                     </button>
                     <button class="btn-send" :disabled="!inputText.trim() || streaming" @click="send()">
-                        <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                            <path d="M1.5 7.5h12M8 2l5.5 5.5L8 13" stroke="currentColor" stroke-width="1.8"
-                                stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
+                        <IconSend :size="15" />
                     </button>
                 </div>
             </div>
@@ -64,10 +54,13 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import IconBolt from '@/components/icons/IconBolt.vue'
+import IconChat from '@/components/icons/IconChat.vue'
+import IconStopSquare from '@/components/icons/IconStopSquare.vue'
+import IconSend from '@/components/icons/IconSend.vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import { createChatStream } from '@/services/chat.service'
 import type { Subscription } from 'rxjs'
-import { useAuthStore } from '../../stores/auth'
 import ChatMessageItem from './ChatMessageItem.vue'
 import type { ChatMessage as Message } from './ChatMessageItem.vue'
 import { ConversationService } from '../../services/conversation.service'
@@ -180,7 +173,6 @@ function stop() {
     }
 }
 
-const auth = useAuthStore()
 const reconnectAttempt = ref(0)
 
 // ── 加载历史对话 ──────────────────────────────────────────────────────────────
@@ -199,7 +191,7 @@ onMounted(async () => {
     } catch { /* 新对话，忽略 */ }
 })
 
-const CHAT_STREAM_URL = 'http://localhost:3100/api/chat/stream'
+const CHAT_STREAM_URL = 'http://192.168.31.203/api/chat/stream'
 
 function sendToAI(text: string) {
     streaming.value = true
@@ -226,7 +218,7 @@ function sendToAI(text: string) {
             streamingMessage.value.status = 'RECONNECTING'
         },
         body: {
-            model: props.model || 'google/gemma-3-4b',
+            model: props.model || 'deepseek/deepseek-r1-0528-qwen3-8b:4',
             messages: llmMessages,
             temperature: props.temperature ?? 0.7,
             max_tokens: props.maxTokens ?? 1024,

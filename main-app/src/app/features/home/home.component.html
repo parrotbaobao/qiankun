@@ -1,78 +1,107 @@
-<div class="home">
-  <div class="home-header">
-    <h2>🏠 主应用 · CSS 隔离对比</h2>
-    <p>在这里观察主应用侧的表现，然后切换到子应用页面进行对比。切换顶部沙箱模式后刷新。</p>
+<div class="devui-home main-theme">
+  <div class="banner">
+    <h2>🔵 主应用 main-app · DevUI 蓝色主题</h2>
+    <p>三个项目都用 ng-devui，主应用是蓝色（默认）。进入子应用再回来，观察这里按钮 / 输入框颜色有没有变。</p>
   </div>
 
-  <!-- 场景 A：弹窗 / 抽屉 -->
+  <!-- 1. Button -->
   <section class="card">
-    <div class="card-title"><span class="tag tag-a">A</span> 弹窗 / 抽屉</div>
-    <div class="btn-row">
-      <button class="action-btn" (click)="dialogOpen = true">打开 Dialog</button>
-      <button class="action-btn" (click)="drawerOpen = true">打开 Drawer</button>
-    </div>
-    <p class="note">主应用弹窗在任意沙箱模式下样式均正常，因为它属于宿主，不受 qiankun 隔离影响。对比子应用的 El-Plus Dialog，在 experimental/strict 模式下会丢失样式。</p>
-  </section>
-
-  <!-- 场景 B：CSS 变量 -->
-  <section class="card">
-    <div class="card-title"><span class="tag tag-b">B</span> CSS 变量</div>
-    <div class="var-row">
-      <div class="var-box" style="background: var(--shared-color, #ff6600)">
-        <span class="var-name">--shared-color</span>
-        <span class="var-hint">主应用定义：橙 #ff6600<br>子应用定义：蓝 #409eff<br>观察哪个赢</span>
-      </div>
-      <div class="var-box" style="background: var(--host-primary, #e53935)">
-        <span class="var-name">--host-primary</span>
-        <span class="var-hint">主应用专属变量（红）<br>子应用能否读到它？<br>→ 任何模式都能（:root 不被隔离）</span>
-      </div>
+    <h3>① Button</h3>
+    <div class="row">
+      <d-button bsStyle="primary" (btnClick)="handleClick('primary')">主要按钮</d-button>
+      <d-button bsStyle="common" (btnClick)="handleClick('common')">普通按钮</d-button>
+      <d-button bsStyle="danger" (btnClick)="handleClick('danger')">危险按钮</d-button>
+      <d-button bsStyle="text" (btnClick)="handleClick('text')">文字按钮</d-button>
     </div>
   </section>
 
-  <!-- 场景 C：类名冲突 -->
+  <!-- 2. Input -->
   <section class="card">
-    <div class="card-title"><span class="tag tag-c">C</span> 类名冲突 <code>.conflict-btn</code></div>
-    <button class="conflict-btn">主应用的 .conflict-btn</button>
-    <p class="note">主应用 styles.scss 全局定义了 <code>.conflict-btn &#123; background: red !important &#125;</code>。这里始终是红色。<br>子应用里同名的按钮：none 模式下被污染为红；experimental/strict 下保持子应用自己的颜色。</p>
+    <h3>② Input</h3>
+    <div class="row">
+      <d-input [(ngModel)]="inputValue" placeholder="主应用输入框"></d-input>
+      <span class="value">值：{{ inputValue }}</span>
+    </div>
   </section>
 
-  <!-- 场景 D：@keyframes 动画 -->
+  <!-- 3. Tag -->
   <section class="card">
-    <div class="card-title"><span class="tag tag-d">D</span> @keyframes spin 动画</div>
-    <div class="spin-row">
-      <div class="spin-box host-spin">主应用<br><small>只旋转</small></div>
+    <h3>③ Tag</h3>
+    <div class="row">
+      <d-tag *ngFor="let t of tags" [tag]="t.name" [customColor]="t.color"></d-tag>
     </div>
-    <p class="note">主应用定义的 <code>@keyframes spin</code>：只旋转，无缩放。子应用也定义了同名 spin，但有缩放脉冲。none 模式下两者的 spin 会互相覆盖（顺序不定）；strict 模式下完全隔离。</p>
   </section>
 
-  <!-- 场景 E：:root 变量 -->
+  <!-- 4. Alert -->
   <section class="card">
-    <div class="card-title"><span class="tag tag-e">E</span> :root 变量泄露</div>
-    <p class="note">主应用在 <code>:root</code> 定义了 <code>--host-primary: #e53935</code> 和 <code>--shared-color: #ff6600</code>。无论哪种沙箱模式，子应用都能读到这些变量，因为 qiankun 无法阻止 <code>:root</code> 变量的继承。解决方案：用带前缀的命名空间，如 <code>--host-xxx</code> vs <code>--sub3-xxx</code>。</p>
+    <h3>④ Alert</h3>
+    <d-alert *ngIf="showAlert" [type]="'info'" [closeable]="true" (closeEvent)="showAlert = false">
+      这是主应用的 Alert（蓝色信息条）
+    </d-alert>
+    <d-button *ngIf="!showAlert" bsStyle="text" (btnClick)="showAlert = true">重新显示</d-button>
   </section>
 
-  <!-- Dialog -->
-  <div class="overlay" *ngIf="dialogOpen" (click)="dialogOpen = false">
-    <div class="dialog" (click)="$event.stopPropagation()">
-      <div class="dialog-head">🏠 主应用 Dialog <button class="close-btn" (click)="dialogOpen = false">✕</button></div>
-      <div class="dialog-body">
-        <p>此弹窗在主应用 DOM 树内渲染，样式来自主应用全局 CSS。</p>
-        <p><strong>任何沙箱模式下样式均正常。</strong></p>
-      </div>
-      <div class="dialog-foot">
-        <button class="action-btn" (click)="dialogOpen = false">关闭</button>
-      </div>
+  <!-- 5. DatePicker -->
+  <section class="card">
+    <h3>⑤ DatePicker</h3>
+    <div class="row">
+      <d-datepicker [(ngModel)]="selectedDate" placeholder="选择日期"></d-datepicker>
+      <span class="value">选中：{{ selectedDate | date:'yyyy-MM-dd' }}</span>
     </div>
-  </div>
+  </section>
 
-  <!-- Drawer -->
-  <div class="overlay" *ngIf="drawerOpen" (click)="drawerOpen = false">
-    <div class="drawer" (click)="$event.stopPropagation()">
-      <div class="dialog-head">🏠 主应用 Drawer <button class="close-btn" (click)="drawerOpen = false">✕</button></div>
-      <div class="dialog-body">
-        <p>主应用 Drawer，样式始终有效。</p>
-        <p>对比子应用3的 El-Plus Drawer：experimental/strict 下样式丢失。</p>
-      </div>
+  <!-- 6. Tabs -->
+  <section class="card">
+    <h3>⑥ Tabs</h3>
+    <d-tabs [(activeTab)]="activeTab">
+      <d-tab tabId="tab1" title="第一项">主应用 Tab 内容 1</d-tab>
+      <d-tab tabId="tab2" title="第二项">主应用 Tab 内容 2</d-tab>
+      <d-tab tabId="tab3" title="第三项">主应用 Tab 内容 3</d-tab>
+    </d-tabs>
+  </section>
+
+  <!-- 7. Table -->
+  <section class="card">
+    <h3>⑦ DataTable</h3>
+    <table class="devui-table">
+      <thead>
+        <tr><th>ID</th><th>名称</th><th>状态</th><th>日期</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of rows">
+          <td>{{ r.id }}</td>
+          <td>{{ r.name }}</td>
+          <td><d-tag [tag]="r.status" [customColor]="r.status === '激活' ? '#2e7d32' : '#9e9e9e'"></d-tag></td>
+          <td>{{ r.date }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 8. Conflict button (同名第三方库样式冲突测试用) -->
+  <section class="card conflict">
+    <h3>⑧ 同名样式冲突点（重点观察）</h3>
+    <p>下面是用相同 class <code>.devui-brand-btn</code> 的按钮。主应用是蓝，子应用会用同名 class 写成绿/橙。</p>
+    <button class="devui-brand-btn">同名 class 按钮（主应用蓝）</button>
+  </section>
+
+  <!-- 9. 运行时注入的 style（模拟第三方库 Modal/Tooltip 的行为） -->
+  <section class="card danger">
+    <h3>⑨ 🔥 主应用样式消失复现点 🔥</h3>
+    <p>
+      下面这个按钮的样式不是写死在 styles.scss / component scss 里的，而是组件 <code>ngAfterViewInit</code> 时
+      JS 动态 <code>document.head.appendChild(&lt;style&gt;)</code> 注进去的。
+      <strong>很多第三方库（包括 ng-devui 的 Modal / Tooltip）就是这么做的。</strong>
+    </p>
+    <p>
+      <strong>复现步骤：</strong><br>
+      ① 看下面按钮是紫红色 → 样式 OK<br>
+      ② 顶部菜单点 sub-app 进入子应用，再点回 home<br>
+      ③ 看按钮是不是变成 <strong>无样式的灰色裸按钮</strong>，再点"检测样式是否还在"
+    </p>
+    <div class="row">
+      <button class="runtime-styled-btn">运行时注入样式按钮</button>
+      <d-button bsStyle="common" (btnClick)="checkStyleAlive()">检测样式是否还在</d-button>
     </div>
-  </div>
+  </section>
 </div>

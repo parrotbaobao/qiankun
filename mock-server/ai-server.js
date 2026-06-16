@@ -19,7 +19,7 @@ function createClient() {
     // ── 优先：LM Studio 本地部署 ──────────────────────────────────────────────
     if (!useCloud) {
         const baseURL = process.env.LM_STUDIO_BASE_URL || 'http://192.168.31.203:1234/v1'
-        const model   = process.env.LM_STUDIO_MODEL    || 'google/gemma-3-4b'
+        const model   = process.env.LM_STUDIO_MODEL    || 'deepseek/deepseek-r1-0528-qwen3-8b:4'
         return {
             client: new OpenAI({ apiKey: 'lm-studio', baseURL }),
             model,
@@ -175,7 +175,8 @@ function sseSend(res, data) {
     res.write(`data: ${JSON.stringify(data)}\n\n`)
 }
 
-// ── POST /v1/chat/completions（OpenAI-compatible passthrough） ─────────────────
+// ── POST /v1/chat/completions（OpenAI-compatible passthrough）─────────────────
+// chunk 原样透传：前端 pickText 自行处理 delta.reasoning_content / delta.content
 app.post('/v1/chat/completions', async (req, res) => {
     const { messages, temperature, max_tokens } = req.body
     if (!messages?.length) return res.status(400).json({ error: 'messages is required' })
@@ -187,7 +188,7 @@ app.post('/v1/chat/completions', async (req, res) => {
         const stream = await client.chat.completions.create({
             model, messages, stream: true,
             temperature: temperature ?? 0.7,
-            max_tokens: max_tokens ?? 1024,
+            max_tokens: max_tokens ?? 8192,
         })
         for await (const chunk of stream) {
             res.write(`data: ${JSON.stringify(chunk)}\n\n`)
@@ -246,7 +247,7 @@ app.post('/api/chat', async (req, res) => {
         console.log(`[${provider}] ${model} | mode=${mode} stage=${stage} conv=${conversationId ?? '-'} history=${contextHistory.length}`)
 
         const stream = await client.chat.completions.create({
-            model, messages: llmMessages, stream: true, temperature: 0.7, max_tokens: 1024,
+            model, messages: llmMessages, stream: true, temperature: 0.7, max_tokens: 8192,
         })
 
         let fullContent = ''
@@ -375,7 +376,7 @@ app.listen(PORT, () => {
     const useCloud = process.env.USE_CLOUD_FALLBACK === 'true'
     if (!useCloud) {
         const baseURL = process.env.LM_STUDIO_BASE_URL || 'http://192.168.31.203:1234/v1'
-        const model   = process.env.LM_STUDIO_MODEL    || 'google/gemma-3-4b'
+        const model   = process.env.LM_STUDIO_MODEL    || 'deepseek/deepseek-r1-0528-qwen3-8b:4'
         console.log(`AI server → http://localhost:${PORT}`)
         console.log(`  ✓ LM Studio  ${baseURL}  model=${model}`)
     } else {

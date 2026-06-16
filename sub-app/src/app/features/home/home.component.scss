@@ -1,174 +1,80 @@
-.cmp-page {
-  padding: 24px 32px;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  align-content: start;
+/* sub-app 绿色主题 — 覆盖 DevUI CSS 变量 */
+.devui-home.sub-theme {
+  --devui-brand: #2e7d32;
+  --devui-brand-hover: #1b5e20;
+  --devui-brand-active: #0d3711;
+  --devui-brand-foil: #4caf50;
+
+  padding: 24px;
+  background: #f1f8f3;
   min-height: 100%;
-  box-sizing: border-box;
-}
+  color: #1b5e20;
 
-.cmp-header {
-  grid-column: 1 / -1;
-  h2 { margin: 0 0 6px; font-size: 20px; font-weight: 700; color: #111827; }
-  p  { margin: 0; font-size: 13px; color: #6b7280; }
-}
+  .banner {
+    background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%);
+    color: #fff;
+    padding: 20px 24px;
+    border-radius: 8px;
+    margin-bottom: 20px;
 
-/* ── 场景卡片 ── */
-.card {
-  background: #fff;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
+    h2 { margin: 0 0 8px; }
+    p  { margin: 0; opacity: 0.92; font-size: 13px; }
+    .info { margin-top: 6px; font-size: 12px; }
+    code, strong { background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 3px; }
+  }
 
-.card-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #111827;
-  code { font-size: 12px; background: #f3f4f6; padding: 1px 5px; border-radius: 3px; }
-}
+  .card {
+    background: #fff;
+    border: 1px solid #c8e6c9;
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
 
-.tag {
-  display: inline-block;
-  padding: 2px 9px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-}
-.tag-a { background: #dbeafe; color: #1d4ed8; }
-.tag-b { background: #d1fae5; color: #065f46; }
-.tag-c { background: #fee2e2; color: #991b1b; }
-.tag-d { background: #ede9fe; color: #5b21b6; }
-.tag-e { background: #ffedd5; color: #9a3412; }
+    h3 {
+      margin: 0 0 12px;
+      color: #2e7d32;
+      font-size: 15px;
+    }
 
-.note {
-  font-size: 12px;
-  color: #6b7280;
-  line-height: 1.6;
-  margin: 0;
-  code { background: #f3f4f6; padding: 1px 4px; border-radius: 3px; font-size: 11px; }
-}
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
 
-/* ── A：按钮 ── */
-.btn-row { display: flex; gap: 10px; }
+    .value { color: #555; font-size: 13px; }
 
-.action-btn {
-  padding: 7px 16px;
-  border-radius: 7px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  color: #374151;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all .15s;
-  &:hover { background: #f9fafb; border-color: #9ca3af; }
-}
+    &.conflict {
+      border-color: #2e7d32;
+      border-width: 2px;
+      background: #e8f5e9;
+    }
+  }
 
-/* ── B：CSS 变量 ── */
-.var-row { display: flex; gap: 12px; }
+  .devui-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
 
-.var-box {
-  flex: 1;
-  border-radius: 8px;
-  padding: 14px 16px;
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.var-name { font-size: 13px; font-weight: 700; }
-.var-hint { font-size: 11px; opacity: .8; line-height: 1.5; }
+    th, td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #e8f5e9;
+      text-align: left;
+    }
+    th { background: #e8f5e9; color: #1b5e20; }
+  }
 
-/* ── C：类名冲突 ── 样式定义在全局 styles.scss，不走 ViewEncapsulation */
+  /* 同名 class 按钮 —— 子应用绿（验证冲突用） */
+  .devui-brand-btn {
+    background: #2e7d32;
+    color: #fff;
+    border: 2px solid #1b5e20;
+    border-radius: 4px;
+    padding: 8px 18px;
+    font-size: 14px;
+    cursor: pointer;
 
-/* ── D：@keyframes ── */
-@keyframes spin {
-  0%   { transform: rotate(0deg)   scale(1);   }
-  50%  { transform: rotate(180deg) scale(1.3); }
-  100% { transform: rotate(360deg) scale(1);   }
-}
-
-.spin-row { display: flex; gap: 16px; align-items: center; }
-
-.spin-box {
-  width: 80px;
-  height: 80px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: #fff;
-  small { font-size: 10px; opacity: .8; }
-}
-
-.sub1-spin {
-  background: linear-gradient(135deg, #409eff, #66b1ff);
-  animation: spin 2s linear infinite;
-}
-
-/* ── Dialog ── */
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.45);
-  z-index: 9000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.dialog {
-  background: #fff;
-  border-radius: 12px;
-  width: 420px;
-  max-width: 90vw;
-  overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0,0,0,.2);
-}
-
-.dialog-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  background: #4f46e5;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.dialog-body {
-  padding: 18px;
-  font-size: 13px;
-  color: #374151;
-  line-height: 1.7;
-  p { margin: 0 0 8px; &:last-child { margin: 0; } }
-  strong { color: #4f46e5; }
-}
-
-.dialog-foot {
-  padding: 12px 18px;
-  border-top: 1px solid #f1f5f9;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.close-btn {
-  background: transparent;
-  border: none;
-  color: rgba(255,255,255,.8);
-  font-size: 16px;
-  cursor: pointer;
-  line-height: 1;
-  &:hover { color: #fff; }
+    &:hover { background: #1b5e20; }
+  }
 }

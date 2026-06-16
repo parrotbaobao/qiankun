@@ -82,6 +82,8 @@ function generateToken() {
 function authMiddleware(req, res, next) {
     const auth = req.headers['authorization'] || ''
     const token = auth.replace('Bearer ', '')
+    // DB 不可用时进入 dev bypass：只要带了任意 token 就放行
+    if (!dbAvailable && token) { req.userId = 'dev'; req.token = token; return next() }
     if (!token || !tokens.has(token)) {
         return res.status(401).json({ code: 401, message: '未登录或登录已过期' })
     }
@@ -1077,7 +1079,7 @@ app.post('/api/score', async (req, res) => {
         const historyText = history
             .map(m => `${m.role === 'user' ? '候选人' : '面试官'}: ${m.content}`)
             .join('\n\n')
-        const model = process.env.LM_STUDIO_MODEL || 'google/gemma-3-4b'
+        const model = process.env.LM_STUDIO_MODEL || 'deepseek/deepseek-r1-0528-qwen3-8b:4'
         const stream = await lmClient().chat.completions.create({
             model,
             messages: [
@@ -1102,12 +1104,13 @@ app.post('/api/score', async (req, res) => {
 app.get('/api/provider', (_req, res) => {
     res.json({
         provider: 'LM Studio',
-        model: process.env.LM_STUDIO_MODEL || 'google/gemma-3-4b',
+        model: process.env.LM_STUDIO_MODEL || 'deepseek/deepseek-r1-0528-qwen3-8b:4',
         baseURL: process.env.LM_STUDIO_BASE_URL || 'http://192.168.31.203:1234/v1',
     })
 })
 // ── Chat Stream Proxy ─────────────────────────────────────────────────────────
 // POST /api/chat/stream  — 代理转发至 LM Studio，需要认证
+// chunk 原样透传：前端 pickText 自行处理 delta.reasoning_content / delta.content
 app.post('/api/chat/stream', authMiddleware, async (req, res) => {
     const ac = new AbortController()
     req.on('close', () => ac.abort())
@@ -1121,11 +1124,11 @@ app.post('/api/chat/stream', authMiddleware, async (req, res) => {
     try {
         const stream = await lmClient().chat.completions.create(
             {
-                model: model || process.env.LM_STUDIO_MODEL || 'google/gemma-3-4b',
+                model: model || process.env.LM_STUDIO_MODEL || 'deepseek/deepseek-r1-0528-qwen3-8b:4',
                 messages,
                 stream: true,
                 temperature: temperature ?? 0.7,
-                max_tokens: max_tokens ?? 1024,
+                max_tokens: max_tokens ?? 8192,
                 ...(top_p !== undefined ? { top_p } : {}),
             },
             { signal: ac.signal }
@@ -1152,14 +1155,17 @@ app.post('/api/chat/stream', authMiddleware, async (req, res) => {
 })
 // ── End AI endpoints ──────────────────────────────────────────────────────────
 
+let dbAvailable = false
+
 async function start() {
     try {
-        await db.initDb()
+        const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('连接超时')), 4000))
+        await Promise.race([db.initDb(), timeout])
+        dbAvailable = true
         console.log('  ✓ MySQL 连接成功，数据库已就绪')
     } catch (err) {
         console.error('✗ MySQL 连接失败:', err.message)
-        console.error('  请检查数据库配置后重启')
-        process.exit(1)
+        console.warn('  ⚠ 以无数据库模式启动（登录/用户接口不可用，chat/stream 可正常使用）')
     }
     app.listen(PORT, () => {
         console.log(`mock server → http://localhost:${PORT}`)

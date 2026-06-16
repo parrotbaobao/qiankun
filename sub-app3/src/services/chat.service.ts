@@ -15,7 +15,7 @@ export type TypewriterOptions = {
 }
 
 export function createChatStream(options: TypewriterOptions) {
-  const CHAT_URL = options.url ?? 'http://192.168.31.203:1234/v1/chat/completions'
+  const CHAT_URL = options.url ?? '/lm-studio/v1/chat/completions'
   // 标点停顿（ms）：让打字更像真人/ChatGPT
   const pauseMs = {
     comma: 60, // 逗号/顿号/分号/冒号的短停顿
@@ -41,7 +41,7 @@ export function createChatStream(options: TypewriterOptions) {
   let rafId: number | null = null
 
   const text$ = new Observable<string>((subscriber) => {
-    const { body, pickText = (s) => s, retry = true, maxRetries = 3, onReconnecting } = options
+    const { body, pickText = (s) => s, maxRetries = 3, onReconnecting } = options
 
     let retryCount = 0
 
@@ -79,6 +79,7 @@ export function createChatStream(options: TypewriterOptions) {
       body: body == null ? null : typeof body === 'string' ? body : JSON.stringify(body),
       signal: ctrl.signal,
       onmessage: (ev) => {
+        console.log(ev)
         try {
           const data = ev?.data
           if (!data || data === '[DONE]') return
@@ -111,7 +112,7 @@ export function createChatStream(options: TypewriterOptions) {
           lastFrameTs = performance.now()
           onReconnecting?.(retryCount)
           // 指数退避：1s / 2s / 4s
-          return Math.pow(2, retryCount - 1) * 1000
+          throw err
         }
         subscriber.error(err)
       },

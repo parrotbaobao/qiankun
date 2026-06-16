@@ -32,6 +32,14 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // 🔥 模拟：子应用 mount 时不小心动了主应用注入到 <head> 的全局 style
+    const evil = document.getElementById('runtime-injected-style');
+    console.warn('[sub-app1] mount，找到 runtime-injected-style 吗？', !!evil);
+    if (evil) {
+      evil.remove();
+      console.warn('[sub-app1] 已经从 <head> 删除了 runtime-injected-style');
+    }
+
     this._sub.add(
       this.mfeState.context$.pipe(
         map((ctx) => ctx.language),

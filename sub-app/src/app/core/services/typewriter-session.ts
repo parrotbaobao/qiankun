@@ -42,6 +42,7 @@ export class TypewriterSession {
   private ctrl = new AbortController(); // 取消控制器（✅ 现在会传给 fetchEventSource 的 signal）
   private queue: string[] = []; // 字符队列：存放还没显示的字符
   private streamClosed = false; // SSE 是否已结束（onclose 时置为 true）
+  private inThinking = false; // DeepSeek R1：是否处于 <think> 块内
   private isPumping = false; // 是否正在“吐字”
   private display = ''; // 当前已经渲染出来的完整文本
   private lastFrameTs = performance.now(); // 上一帧时间戳
@@ -63,6 +64,7 @@ export class TypewriterSession {
     this.ctrl = new AbortController(); // 取消控制器（✅ 现在会传给 fetchEventSource 的 signal）
     this.queue = []; // 字符队列：存放还没显示的字符
     this.streamClosed = false; // SSE 是否已结束（onclose 时置为 true）
+    this.inThinking = false;
     this.isPumping = false; // 是否正在“吐字”
     this.display = ''; // 当前已经渲染出来的完整文本
     this.lastFrameTs = performance.now(); // 上一帧时间戳
@@ -120,8 +122,11 @@ export class TypewriterSession {
           const data = ev?.data;
           if (!data || data === '[DONE]') return;
           const jsonData = JSON.parse(data);
-          const content = jsonData?.choices[0]?.delta?.content;
-          this.enqueue(content); // 入队并触发吐字（前台）/积压（后台）
+          const delta = jsonData?.choices?.[0]?.delta ?? {};
+          // reasoning_content：部分 LM Studio 版本将思考内容单独放此字段，直接丢弃
+          const raw: string = delta.content ?? '';
+          const content = this.stripThinking(raw);
+          this.enqueue(content);
         } catch (e) {
           this.subscriber?.error(e); // 解析/处理失败直接 error
         }
@@ -272,7 +277,36 @@ export class TypewriterSession {
     return 0; // 普通字符：不停顿
   };
 
-  // 队列越长 => 速度越快：避免队列积压导致“永远吐不完”
+  // 过滤 DeepSeek R1 的 <think>...</think> 思考块，只保留最终回答
+  private stripThinking(chunk: string): string {
+    if (!chunk) return '';
+    let out = '';
+    let rest = chunk;
+    while (rest.length > 0) {
+      if (this.inThinking) {
+        const end = rest.indexOf('</think>');
+        if (end >= 0) {
+          this.inThinking = false;
+          rest = rest.slice(end + '</think>'.length).replace(/^\n/, '');
+        } else {
+          rest = '';
+        }
+      } else {
+        const start = rest.indexOf('<think>');
+        if (start >= 0) {
+          out += rest.slice(0, start);
+          this.inThinking = true;
+          rest = rest.slice(start + '<think>'.length);
+        } else {
+          out += rest;
+          rest = '';
+        }
+      }
+    }
+    return out;
+  }
+
+  // 队列越长 => 速度越快：避免队列积压导致”永远吐不完”
   private getAdaptiveSpeed = (queueLen: number) => {
     if (queueLen > 600) return this.maxCharsPerSecond; // 极长积压：直接上限速度
     if (queueLen > 300) return Math.min(this.maxCharsPerSecond, 95); // 中等积压：加速

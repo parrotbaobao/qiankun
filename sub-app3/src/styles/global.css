@@ -1,9 +1,45 @@
 html,
-body,
-#app {
+body {
     margin: 0;
     padding: 0;
     width: 100%;
     height: 100dvh;
     overflow: hidden;
+}
+
+/* #app 用 100% 而不是 100dvh：
+   - 独立运行时：继承 body 的 100dvh，效果一样
+   - qiankun 容器内运行时：继承容器高度（主应用有头部/侧栏，容器 < 100dvh）
+     如果用 100dvh 会溢出容器，导致页面只显示一半 */
+#app {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ── 全局布局链（无法用 scoped 穿透 router-view，必须写全局）── */
+
+/* App.vue 根容器：flex 列，topbar 自然高度，page-wrap 填满剩余 */
+.app-root {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* router-view 的包裹层：占满 topbar 以下全部高度 */
+.page-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* router-view 渲染的页面组件根节点：scoped 穿不透，必须全局写 */
+.page-wrap > * {
+    flex: 1;
+    min-height: 0;
 }

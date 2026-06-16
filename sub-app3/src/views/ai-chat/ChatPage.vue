@@ -41,13 +41,14 @@ const APIS = [
 const selectedApi = ref('http://localhost:3200/api/chat')
 
 const MODELS = [
+  { value: 'deepseek/deepseek-r1-0528-qwen3-8b:4', label: 'DeepSeek R1 (Local)' },
   { value: 'google/gemma-3-4b', label: 'Gemma 3 4B (Local)' },
   { value: 'google/gemma-3-12b', label: 'Gemma 3 12B' },
   { value: 'meta-llama/llama-3.1-8b-instruct', label: 'Llama 3.1 8B' },
   { value: 'deepseek/deepseek-r1', label: 'DeepSeek R1' },
   { value: 'qwen/qwen2.5-7b-instruct', label: 'Qwen 2.5 7B' },
 ]
-const model = ref('google/gemma-3-4b')
+const model = ref('deepseek/deepseek-r1-0528-qwen3-8b:4')
 const temperature = ref(0.7)
 const maxTokens = ref(512)
 const topP = ref(1.0)

@@ -1,101 +1,29 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
-import { TranslateService } from '@ngx-translate/core';
-
-interface ErrorItem {
-  code: string;
-  service: string;
-  httpStatus: number;
-  descZh: string;
-  descEn: string;
-  solutionZh: string;
-  solutionEn: string;
-}
+import { Component } from '@angular/core';
 
 @Component({
   selector: 'app-error-center',
   templateUrl: './error-center.component.html',
   styleUrls: ['./error-center.component.scss'],
 })
-export class ErrorCenterComponent implements OnInit, OnDestroy {
-  services: string[] = [];
-  errors: ErrorItem[] = [];
-  total = 0;
-  loading = false;
+export class ErrorCenterComponent {
+  inputValue = '';
+  selectedDate: Date | null = null;
+  showAlert = true;
+  activeTab: string | number = 'tab1';
 
-  keyword = '';
-  selectedService = '';
-  page = 1;
-  pageSize = 10;
+  tags = [
+    { name: 'sub-app2', color: '#ef6c00' },
+    { name: '橙色主题', color: '#e65100' },
+    { name: 'DevUI', color: '#ff9800' },
+  ];
 
-  expandedCode = '';
+  rows = [
+    { id: 1, name: '子应用 2 条目 A', status: '激活', date: '2026-05-01' },
+    { id: 2, name: '子应用 2 条目 B', status: '禁用', date: '2026-05-15' },
+    { id: 3, name: '子应用 2 条目 C', status: '激活', date: '2026-05-30' },
+  ];
 
-  private keyword$ = new Subject<string>();
-  private destroy$ = new Subject<void>();
-
-  constructor(private http: HttpClient, public translate: TranslateService) {}
-
-  ngOnInit(): void {
-    this.http.get<{ code: number; data: string[] }>('/api/errors/services')
-      .subscribe(res => { this.services = res.data; });
-
-    this.keyword$.pipe(
-      debounceTime(300),
-      distinctUntilChanged(),
-      takeUntil(this.destroy$),
-    ).subscribe(() => { this.page = 1; this.fetchErrors(); });
-
-    this.fetchErrors();
+  handleClick(type: string): void {
+    alert(`[sub-app2] 点了 ${type} 按钮`);
   }
-
-  fetchErrors(): void {
-    this.loading = true;
-    const params = new HttpParams()
-      .set('service', this.selectedService)
-      .set('keyword', this.keyword)
-      .set('page', String(this.page))
-      .set('pageSize', String(this.pageSize));
-
-    this.http.get<{ code: number; data: { total: number; list: ErrorItem[] } }>('/api/errors', { params })
-      .subscribe({
-        next: (res) => { this.errors = res.data.list; this.total = res.data.total; this.loading = false; },
-        error: () => { this.loading = false; },
-      });
-  }
-
-  onKeywordChange(v: string): void { this.keyword$.next(v); }
-
-  onServiceChange(): void { this.page = 1; this.fetchErrors(); }
-
-  onPageChange(p: number): void { this.page = p; this.fetchErrors(); }
-
-  get totalPages(): number { return Math.ceil(this.total / this.pageSize); }
-
-  get pages(): number[] {
-    const arr: number[] = [];
-    for (let i = 1; i <= this.totalPages; i++) arr.push(i);
-    return arr;
-  }
-
-  getDesc(item: ErrorItem): string {
-    return this.translate.currentLang === 'en' ? item.descEn : item.descZh;
-  }
-
-  getSolution(item: ErrorItem): string {
-    return this.translate.currentLang === 'en' ? item.solutionEn : item.solutionZh;
-  }
-
-  statusClass(status: number): string {
-    if (status >= 500) return 'status--5xx';
-    if (status >= 400) return 'status--4xx';
-    return 'status--ok';
-  }
-
-  toggleExpand(code: string): void {
-    this.expandedCode = this.expandedCode === code ? '' : code;
-  }
-
-  ngOnDestroy(): void { this.destroy$.next(); this.destroy$.complete(); }
 }

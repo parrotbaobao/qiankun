@@ -7,17 +7,11 @@
         <!-- AI 消息 -->
         <div v-else class="row row-ai">
             <div class="ai-avatar">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                </svg>
+                <IconBolt :size="13" />
             </div>
             <div class="ai-body-inner">
                 <span v-if="item.loading && item.status === 'RECONNECTING'" class="reconnecting">
-                    <svg class="reconnecting-icon" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="1 4 1 10 7 10" />
-                        <path d="M3.51 15a9 9 0 1 0 .49-3.1" />
-                    </svg>
+                    <IconRefresh class="reconnecting-icon" :size="13" stroke-width="2.2" />
                     重连中…
                 </span>
                 <span v-else-if="item.loading" class="typing"><i /><i /><i /></span>
@@ -25,16 +19,11 @@
                     <MessageBubble :message="item" />
                     <div class="msg-meta-row">
                         <div v-if="item.status === 'DONE'" class="msg-done">
-                            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="1.5 6 4.5 9 10.5 3" />
-                            </svg>
+                            <IconCheck :size="11" />
                             已完成
                         </div>
                         <div v-else-if="item.status === 'STOPPED'" class="msg-stopped">
-                            <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
-                                <rect x="2" y="2" width="8" height="8" rx="1.5" />
-                            </svg>
+                            <IconStopRect :size="10" />
                             已停止
                         </div>
                         <!-- 操作按钮 -->
@@ -42,45 +31,23 @@
                             <!-- 复制 -->
                             <button class="act-btn" :class="{ 'act-btn--done': isCopied }"
                                 :title="isCopied ? '已复制' : '复制'" @click="emit('copy')">
-                                <svg v-if="!isCopied" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <rect x="9" y="9" width="13" height="13" rx="2" />
-                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                                </svg>
-                                <svg v-else width="13" height="13" viewBox="0 0 12 12" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="1.5 6 4.5 9 10.5 3" />
-                                </svg>
+                                <IconCheck v-if="isCopied" :size="13" />
+                                <IconCopy v-else :size="13" />
                             </button>
                             <!-- 点赞 -->
                             <button class="act-btn" :class="{ 'act-btn--like': feedbackType === 1 }" title="点赞"
                                 @click="emit('like')">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path
-                                        d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z" />
-                                    <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
-                                </svg>
+                                <IconThumbUp :size="13" />
                             </button>
                             <!-- 点踩 -->
                             <button class="act-btn" :class="{ 'act-btn--dislike': feedbackType === -1 }" title="点踩"
                                 @click="emit('dislike-open')">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path
-                                        d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z" />
-                                    <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
-                                </svg>
+                                <IconThumbDown :size="13" />
                             </button>
                             <!-- 重新生成 -->
                             <button v-if="item.status === 'DONE'" class="act-btn" title="重新生成"
                                 @click="emit('regenerate')">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="1 4 1 10 7 10" />
-                                    <path d="M3.51 15a9 9 0 1 0 .49-3.1" />
-                                </svg>
+                                <IconRefresh :size="13" />
                             </button>
                         </div>
                     </div>
@@ -89,7 +56,7 @@
                         <p class="dislike-title">请告诉我们哪里不对</p>
                         <div class="dislike-tags">
                             <button v-for="tag in DISLIKE_TAGS" :key="tag" class="dislike-tag"
-                                :class="{ 'dislike-tag--on': dislikeSelectedTags.includes(tag) }"
+                                :class="{ 'dislike-tag--on': (dislikeSelectedTags ?? []).includes(tag) }"
                                 @click="emit('toggle-tag', tag)">{{ tag }}</button>
                         </div>
                         <textarea class="dislike-comment" :value="dislikeComment" placeholder="补充说明（选填）" rows="2"
@@ -107,6 +74,13 @@
 
 <script setup lang="ts">
 import MessageBubble from './MessageBubble.vue'
+import IconBolt from '@/components/icons/IconBolt.vue'
+import IconRefresh from '@/components/icons/IconRefresh.vue'
+import IconCheck from '@/components/icons/IconCheck.vue'
+import IconStopRect from '@/components/icons/IconStopRect.vue'
+import IconCopy from '@/components/icons/IconCopy.vue'
+import IconThumbUp from '@/components/icons/IconThumbUp.vue'
+import IconThumbDown from '@/components/icons/IconThumbDown.vue'
 
 export interface ChatMessage {
     id: string

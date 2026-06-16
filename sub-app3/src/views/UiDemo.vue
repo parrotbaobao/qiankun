@@ -58,7 +58,7 @@ const tableData = ref<User[]>([
           </template>
         </el-table-column>
         <el-table-column label="操作" min-width="120">
-          <template #default="{ row }">
+          <template #default>
             <el-button type="primary" link size="small" @click="drawerVisible = true">
               查看详情
             </el-button>

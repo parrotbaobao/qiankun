@@ -1,83 +1,80 @@
-<div class="cmp-page">
-  <div class="cmp-header">
-    <h2>📦 子应用1 · CSS 隔离对比</h2>
-    <p>在这里观察子应用侧的表现，切换到主应用首页进行对比。切换顶部沙箱模式后刷新。</p>
+<div class="devui-home sub-theme">
+  <div class="banner">
+    <h2>🟢 子应用 1 sub-app · DevUI 绿色主题</h2>
+    <p>这里用了和主应用相同的 ng-devui，但通过覆盖 CSS 变量做成绿色。观察沙箱模式不同时，主应用的蓝是否会被这套绿污染。</p>
+    <p class="info">读取到 <code>--shared-color</code> = <strong>{{ sharedColor }}</strong>（:root 变量泄露测试）</p>
   </div>
 
-  <!-- 场景 A：弹窗 -->
   <section class="card">
-    <div class="card-title"><span class="tag tag-a">A</span> 弹窗（非 Portal）</div>
-    <div class="btn-row">
-      <button class="action-btn" (click)="dialogOpen = true">打开 Dialog</button>
-    </div>
-    <p class="note">此弹窗在 Angular 组件模板内渲染，<strong>不走 Portal</strong>，所以 experimental 模式下样式仍有效。对比子应用3的 El-Plus Dialog（走 Portal），experimental/strict 下样式会丢失。</p>
-  </section>
-
-  <!-- 场景 B：CSS 变量 -->
-  <section class="card">
-    <div class="card-title"><span class="tag tag-b">B</span> CSS 变量</div>
-    <div class="var-row">
-      <div class="var-box" style="background: var(--shared-color, #409eff)">
-        <span class="var-name">--shared-color</span>
-        <span class="var-hint">
-          实际读到：{{ sharedColor }}<br>
-          子应用期望：蓝 #409eff<br>
-          主应用定义：橙 #ff6600
-        </span>
-      </div>
-      <div class="var-box" style="background: var(--host-primary, #888)">
-        <span class="var-name">--host-primary（主应用专属）</span>
-        <span class="var-hint">
-          实际读到：{{ hostPrimary }}<br>
-          若有值说明 :root 变量泄露进来了
-        </span>
-      </div>
+    <h3>① Button</h3>
+    <div class="row">
+      <d-button bsStyle="primary" (btnClick)="handleClick('primary')">主要按钮</d-button>
+      <d-button bsStyle="common" (btnClick)="handleClick('common')">普通按钮</d-button>
+      <d-button bsStyle="danger" (btnClick)="handleClick('danger')">危险按钮</d-button>
+      <d-button bsStyle="text" (btnClick)="handleClick('text')">文字按钮</d-button>
     </div>
   </section>
 
-  <!-- 场景 C：类名冲突 -->
   <section class="card">
-    <div class="card-title"><span class="tag tag-c">C</span> 类名冲突 <code>.conflict-btn</code></div>
-    <button class="conflict-btn">子应用1 的 .conflict-btn</button>
-    <p class="note">子应用期望此按钮为<strong>蓝色</strong>。<br>
-      <strong>none</strong>：被主应用 <code>.conflict-btn &#123; background: red !important &#125;</code> 污染 → 红色<br>
-      <strong>experimental / strict</strong>：主应用全局样式被隔离 → 蓝色
-    </p>
-  </section>
-
-  <!-- 场景 D：@keyframes -->
-  <section class="card">
-    <div class="card-title"><span class="tag tag-d">D</span> @keyframes spin 动画</div>
-    <div class="spin-row">
-      <div class="spin-box sub1-spin">子应用1<br><small>旋转+缩放</small></div>
+    <h3>② Input</h3>
+    <div class="row">
+      <d-input [(ngModel)]="inputValue" placeholder="子应用输入框"></d-input>
+      <span class="value">值：{{ inputValue }}</span>
     </div>
-    <p class="note">子应用1 定义的 <code>@keyframes spin</code>：旋转 + 缩放脉冲。主应用也定义了同名 spin（只旋转）。none 模式下两者可能互相覆盖；strict 模式下完全隔离，动画各自独立。</p>
   </section>
 
-  <!-- 场景 E：:root 变量 -->
   <section class="card">
-    <div class="card-title"><span class="tag tag-e">E</span> :root 变量泄露（所有模式）</div>
-    <p class="note">
-      主应用 <code>--host-primary</code> 实际读到：<strong style="color: var(--host-primary, #888)">{{ hostPrimary }}</strong><br>
-      无论哪种沙箱模式，子应用都能读到主应用 <code>:root</code> 里定义的变量，qiankun 无法阻止。
-    </p>
+    <h3>③ Tag</h3>
+    <div class="row">
+      <d-tag *ngFor="let t of tags" [tag]="t.name" [customColor]="t.color"></d-tag>
+    </div>
   </section>
 
-  <!-- Dialog overlay -->
-  <div class="overlay" *ngIf="dialogOpen" (click)="dialogOpen = false">
-    <div class="dialog" (click)="$event.stopPropagation()">
-      <div class="dialog-head">
-        📦 子应用1 · Dialog
-        <button class="close-btn" (click)="dialogOpen = false">✕</button>
-      </div>
-      <div class="dialog-body">
-        <p>此弹窗渲染在 Angular 模板内（非 Portal）。</p>
-        <p>experimental 模式：样式仍有效（元素在 qiankun 容器内，选择器前缀能匹配）。</p>
-        <p>对比子应用3 El-Plus Dialog：它 Portal 到 body，experimental/strict 下丢样式。</p>
-      </div>
-      <div class="dialog-foot">
-        <button class="action-btn" (click)="dialogOpen = false">关闭</button>
-      </div>
+  <section class="card">
+    <h3>④ Alert</h3>
+    <d-alert *ngIf="showAlert" [type]="'success'" [closeable]="true" (closeEvent)="showAlert = false">
+      这是子应用 1 的 Alert（绿色成功条）
+    </d-alert>
+    <d-button *ngIf="!showAlert" bsStyle="text" (btnClick)="showAlert = true">重新显示</d-button>
+  </section>
+
+  <section class="card">
+    <h3>⑤ DatePicker</h3>
+    <div class="row">
+      <d-datepicker [(ngModel)]="selectedDate" placeholder="选择日期"></d-datepicker>
+      <span class="value">选中：{{ selectedDate | date:'yyyy-MM-dd' }}</span>
     </div>
-  </div>
+  </section>
+
+  <section class="card">
+    <h3>⑥ Tabs</h3>
+    <d-tabs [(activeTab)]="activeTab">
+      <d-tab tabId="tab1" title="第一项">sub-app Tab 内容 1</d-tab>
+      <d-tab tabId="tab2" title="第二项">sub-app Tab 内容 2</d-tab>
+      <d-tab tabId="tab3" title="第三项">sub-app Tab 内容 3</d-tab>
+    </d-tabs>
+  </section>
+
+  <section class="card">
+    <h3>⑦ DataTable</h3>
+    <table class="devui-table">
+      <thead>
+        <tr><th>ID</th><th>名称</th><th>状态</th><th>日期</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of rows">
+          <td>{{ r.id }}</td>
+          <td>{{ r.name }}</td>
+          <td><d-tag [tag]="r.status" [customColor]="r.status === '激活' ? '#1b5e20' : '#9e9e9e'"></d-tag></td>
+          <td>{{ r.date }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card conflict">
+    <h3>⑧ 同名样式冲突点（重点观察）</h3>
+    <p>下面是用相同 class <code>.devui-brand-btn</code> 的按钮。子应用是绿。</p>
+    <button class="devui-brand-btn">同名 class 按钮（子应用绿）</button>
+  </section>
 </div>

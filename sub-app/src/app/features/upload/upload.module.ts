@@ -6,6 +6,7 @@ import { HttpClientModule } from '@angular/common/http';
 import { TranslateModule } from '@ngx-translate/core';
 
 import { UploadComponent } from './upload.component';
+import { IconUploadComponent } from '../../shared/icons/icon-upload.component';
 
 const routes: Routes = [
   { path: '', component: UploadComponent },
@@ -19,6 +20,7 @@ const routes: Routes = [
     HttpClientModule,
     RouterModule.forChild(routes),
     TranslateModule,
+    IconUploadComponent,
   ],
   exports: [UploadComponent]
 })

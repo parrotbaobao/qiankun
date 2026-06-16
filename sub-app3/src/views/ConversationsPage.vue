@@ -55,7 +55,7 @@
 
     <!-- ── 右侧对话窗口 ── -->
     <div class="cvp-main">
-      <AiChat v-if="currentId" ref="chatRef" :key="currentId" :conversation-id="currentId"
+      <AiChat v-if="currentId" :key="currentId" :conversation-id="currentId"
         @conversation-updated="store.refreshItem(currentId)" hide-header />
       <div v-else class="cvp-placeholder">
         <div class="cvp-placeholder-icon">
@@ -83,8 +83,6 @@ const currentId = ref('')
 const editingId = ref('')
 const editingTitle = ref('')
 const renameInputRef = ref<HTMLInputElement | null>(null)
-const chatRef = ref<any>(null)
-
 onMounted(() => store.fetchList())
 
 async function handleNew() {

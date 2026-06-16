@@ -1,6 +1,5 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes, UrlMatcher } from '@angular/router';
-import { HomeComponent } from './features/home/home.component';
 import { MicroAppContainerComponent } from './micro-app-container.component';
 
 
@@ -14,7 +13,11 @@ const microAppMatcher: UrlMatcher = (segments) => {
 // routes 里就一条
 const routes: Routes = [
   { matcher: microAppMatcher, component: MicroAppContainerComponent },
-  { path: 'home', component: HomeComponent },
+  {
+    path: 'home',
+    loadChildren: () =>
+      import('./features/home/home.module').then((m) => m.HomeModule),
+  },
   {
     path: 'cloud-advisor',
     loadChildren: () =>

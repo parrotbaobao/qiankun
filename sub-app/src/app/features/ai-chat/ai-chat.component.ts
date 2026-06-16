@@ -78,7 +78,7 @@ export class AiChatComponent implements OnInit, OnDestroy {
   private sendToAI(text: string): void {
     const options = {
       body: {
-        model: 'google/gemma-3-4b',
+        model: 'deepseek/deepseek-r1-0528-qwen3-8b:4',
         stream: true,
         temperature: 0.2,
         messages: [{ role: 'user', content: text }],

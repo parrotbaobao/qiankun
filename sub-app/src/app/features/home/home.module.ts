@@ -1,8 +1,10 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterModule, Routes } from '@angular/router';
 import { HttpClientModule } from '@angular/common/http';
 import { TranslateModule } from '@ngx-translate/core';
+import { DevUIModule } from 'ng-devui';
 
 import { HomeComponent } from './home.component';
 
@@ -10,8 +12,10 @@ import { HomeComponent } from './home.component';
   declarations: [HomeComponent],
   imports: [
     CommonModule,
+    FormsModule,
     HttpClientModule,
     TranslateModule,
+    DevUIModule,
   ],
   exports: [HomeComponent]
 })

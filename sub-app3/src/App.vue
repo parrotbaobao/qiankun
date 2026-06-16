@@ -7,7 +7,6 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 
-const probeDialogOpen = ref(false)
 const sharedColor = ref('')
 onMounted(() => {
   sharedColor.value = getComputedStyle(document.documentElement).getPropertyValue('--shared-color').trim() || '#409eff'
@@ -20,23 +19,36 @@ async function handleLogout() {
 </script>
 
 <template>
-  <div v-if="auth.isLoggedIn && route.name !== 'login'" class="topbar">
-    <nav class="topbar-nav">
-      <router-link class="nav-link" to="/prompts">Prompts</router-link>
-      <router-link class="nav-link" to="/ai">AI 对话</router-link>
-      <router-link class="nav-link" to="/css-isolation-test">CSS/JS 隔离</router-link>
-      <router-link class="nav-link" to="/ui-demo">UI Demo</router-link>
-    </nav>
-    <span class="topbar-user">
-      {{ auth.user?.name ?? auth.user?.username }}
-      <span class="topbar-role">{{ auth.user?.role }}</span>
-    </span>
-    <button class="btn-logout" @click="handleLogout">退出登录</button>
+  <!-- 单根 flex 容器：topbar 自然高度，page-wrap 占满剩余 -->
+  <div class="app-root">
+    <div v-if="route.name !== 'login'" class="topbar">
+      <nav class="topbar-nav">
+        <router-link class="nav-link" to="/prompts">Prompts</router-link>
+        <router-link class="nav-link" to="/conversations">对话列表</router-link>
+        <router-link class="nav-link" to="/ai">AI 对话</router-link>
+        <router-link class="nav-link nav-link-mc" to="/matechat-component">Matechat 组件版</router-link>
+        <router-link class="nav-link nav-link-mc" to="/matechat-source">Matechat 源码版</router-link>
+        <router-link class="nav-link" to="/ui-demo">UI Demo</router-link>
+      </nav>
+      <template v-if="auth.isLoggedIn">
+        <span class="topbar-user">
+          {{ auth.user?.name ?? auth.user?.username }}
+          <span class="topbar-role">{{ auth.user?.role }}</span>
+        </span>
+        <button class="btn-logout" @click="handleLogout">退出登录</button>
+      </template>
+    </div>
+    <!-- page-wrap：flex:1 占满 topbar 以下所有高度，router-view 的 height:100% 在此基础上生效 -->
+    <div class="page-wrap">
+      <router-view />
+    </div>
   </div>
-  <router-view />
 </template>
 
 <style scoped>
+/* app-root / page-wrap / page-wrap>* 的布局规则已移至 global.css
+   因为 scoped 样式无法穿透 router-view 渲染的子组件 */
+
 .topbar {
   display: flex;
   align-items: center;
@@ -72,6 +84,21 @@ async function handleLogout() {
   background: #ede9fe;
   color: #4f46e5;
   font-weight: 500;
+}
+
+/* Matechat 专用导航链接 */
+.nav-link-mc {
+  border: 1px dashed #c4b5fd;
+}
+.nav-link-mc:hover {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+.nav-link-mc.router-link-active {
+  background: #ede9fe;
+  color: #7c3aed;
+  border-color: #7c3aed;
+  border-style: solid;
 }
 
 .topbar-user {
