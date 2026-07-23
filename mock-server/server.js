@@ -17,7 +17,7 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '2mb' }));
 
-// ── Auth (MySQL-backed) ───────────────────────────────────────────────────────
+// ── Auth (本地 JSON 存储，见 ./db.js) ─────────────────────────────────────────
 // 以下旧 JSON 用户定义仅保留供参考，已不再使用
 const _LEGACY_USERS = [
     {
@@ -1079,7 +1079,7 @@ app.post('/api/score', async (req, res) => {
         const historyText = history
             .map(m => `${m.role === 'user' ? '候选人' : '面试官'}: ${m.content}`)
             .join('\n\n')
-        const model = process.env.LM_STUDIO_MODEL || 'deepseek/deepseek-r1-0528-qwen3-8b:4'
+        const model = process.env.LM_STUDIO_MODEL || 'deepseek/deepseek-r1-0528-qwen3-8b'
         const stream = await lmClient().chat.completions.create({
             model,
             messages: [
@@ -1104,7 +1104,7 @@ app.post('/api/score', async (req, res) => {
 app.get('/api/provider', (_req, res) => {
     res.json({
         provider: 'LM Studio',
-        model: process.env.LM_STUDIO_MODEL || 'deepseek/deepseek-r1-0528-qwen3-8b:4',
+        model: process.env.LM_STUDIO_MODEL || 'deepseek/deepseek-r1-0528-qwen3-8b',
         baseURL: process.env.LM_STUDIO_BASE_URL || 'http://192.168.31.203:1234/v1',
     })
 })
@@ -1124,7 +1124,7 @@ app.post('/api/chat/stream', authMiddleware, async (req, res) => {
     try {
         const stream = await lmClient().chat.completions.create(
             {
-                model: model || process.env.LM_STUDIO_MODEL || 'deepseek/deepseek-r1-0528-qwen3-8b:4',
+                model: model || process.env.LM_STUDIO_MODEL || 'deepseek/deepseek-r1-0528-qwen3-8b',
                 messages,
                 stream: true,
                 temperature: temperature ?? 0.7,
@@ -1159,12 +1159,11 @@ let dbAvailable = false
 
 async function start() {
     try {
-        const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('连接超时')), 4000))
-        await Promise.race([db.initDb(), timeout])
+        await db.initDb()
         dbAvailable = true
-        console.log('  ✓ MySQL 连接成功，数据库已就绪')
+        console.log('  ✓ 本地 JSON 存储已就绪（mock-server/local-db.json）')
     } catch (err) {
-        console.error('✗ MySQL 连接失败:', err.message)
+        console.error('✗ 本地存储初始化失败:', err.message)
         console.warn('  ⚠ 以无数据库模式启动（登录/用户接口不可用，chat/stream 可正常使用）')
     }
     app.listen(PORT, () => {

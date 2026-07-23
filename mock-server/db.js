@@ -1,98 +1,56 @@
-require('dotenv').config()
-const mysql  = require('mysql2/promise')
+// 本地 JSON 文件存储（替代 MySQL）
+// 对外导出的函数签名与返回结构与原 MySQL 版完全一致，server.js 无需改动。
+//
+// 数据落盘于 local-db.json，结构：
+//   { _seq: {users,conversations,messages,feedback}, users, conversations, messages, feedback }
+// 时间戳统一存 ISO 字符串（与原先 MySQL TIMESTAMP 经 JSON 序列化后的形态一致）。
+
+const fs     = require('fs')
+const path   = require('path')
 const bcrypt = require('bcryptjs')
 
-const pool = mysql.createPool({
-    host:               process.env.DB_HOST     || '192.168.31.203',
-    port:               Number(process.env.DB_PORT) || 3306,
-    user:               process.env.DB_USER     || 'remote_user',
-    password:           process.env.DB_PASSWORD || 'Remote123!',
-    database:           process.env.DB_NAME     || 'ai_chat',
-    charset:            'utf8mb4',
-    waitForConnections: true,
-    connectionLimit:    10,
-    queueLimit:         0,
-    connectTimeout:     3000,
-})
+const DB_FILE = path.join(__dirname, 'local-db.json')
+
+const EMPTY = {
+    _seq:          { users: 0, conversations: 0, messages: 0, feedback: 0 },
+    users:         [],
+    conversations: [],
+    messages:      [],
+    feedback:      [],
+}
+
+// ── 读写 ──────────────────────────────────────────────────────────────────────
+// Node 单线程 + 同步读写，read→modify→write 之间无 await，等价于串行事务。
+function load() {
+    if (!fs.existsSync(DB_FILE)) return structuredClone(EMPTY)
+    try {
+        const raw = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'))
+        return { ...structuredClone(EMPTY), ...raw, _seq: { ...EMPTY._seq, ...(raw._seq || {}) } }
+    } catch {
+        return structuredClone(EMPTY)
+    }
+}
+
+function save(db) {
+    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2))
+}
+
+/** 自增主键，复刻 MySQL AUTO_INCREMENT */
+function nextId(db, table) {
+    db._seq[table] = (db._seq[table] || 0) + 1
+    return db._seq[table]
+}
+
+const now = () => new Date().toISOString()
+
+/** id 宽松比较：URL param 是字符串，存储是数字，复刻 MySQL 的隐式类型转换 */
+const sameId = (a, b) => String(a) === String(b)
 
 // ── 建表 & 播种 ───────────────────────────────────────────────────────────────
 async function initDb() {
-    await pool.execute(`
-        CREATE TABLE IF NOT EXISTS users (
-            id            BIGINT       PRIMARY KEY AUTO_INCREMENT,
-            username      VARCHAR(50)  UNIQUE NOT NULL,
-            email         VARCHAR(100) UNIQUE,
-            password_hash VARCHAR(255) NOT NULL,
-            avatar_url    VARCHAR(500),
-            name          VARCHAR(100),
-            nickname      VARCHAR(50),
-            role          ENUM('admin','user') DEFAULT 'user',
-            phone         VARCHAR(20),
-            gender        ENUM('male','female','other'),
-            department    VARCHAR(100),
-            position      VARCHAR(100),
-            bio           TEXT,
-            location      VARCHAR(100),
-            website       VARCHAR(200),
-            status        ENUM('active','inactive') DEFAULT 'active',
-            permissions   JSON,
-            tags          JSON,
-            preferences   JSON,
-            stats         JSON,
-            last_login_at TIMESTAMP NULL,
-            created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `)
+    const db = load()
 
-    await pool.execute(`
-        CREATE TABLE IF NOT EXISTS conversations (
-            id            BIGINT      PRIMARY KEY AUTO_INCREMENT,
-            user_id       BIGINT      NOT NULL,
-            title         VARCHAR(200) DEFAULT '新对话',
-            model         VARCHAR(50)  DEFAULT 'google/gemma-3-4b',
-            system_prompt TEXT,
-            is_pinned     BOOLEAN     DEFAULT FALSE,
-            is_archived   BOOLEAN     DEFAULT FALSE,
-            created_at    TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
-            updated_at    TIMESTAMP   DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `)
-
-    await pool.execute(`
-        CREATE TABLE IF NOT EXISTS messages (
-            id              BIGINT    PRIMARY KEY AUTO_INCREMENT,
-            conversation_id BIGINT    NOT NULL,
-            role            ENUM('user','assistant','system') NOT NULL,
-            content         TEXT      NOT NULL,
-            tokens          INT       DEFAULT 0,
-            metadata        JSON,
-            created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `)
-
-    await pool.execute(`
-        CREATE TABLE IF NOT EXISTS conversation_feedback (
-            id              BIGINT       PRIMARY KEY AUTO_INCREMENT,
-            message_id      VARCHAR(64)  NOT NULL,
-            user_id         BIGINT       NOT NULL,
-            conversation_id BIGINT,
-            feedback_type   TINYINT      NOT NULL DEFAULT 0,
-            reason_tags     VARCHAR(500),
-            comment         TEXT,
-            user_query      TEXT,
-            ai_response     TEXT,
-            created_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-            updated_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            UNIQUE KEY uk_msg_user (message_id, user_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `)
-
-    // 种子用户（仅首次，表为空时插入）
-    const [[{ cnt }]] = await pool.execute('SELECT COUNT(*) AS cnt FROM users')
-    if (Number(cnt) === 0) {
+    if (db.users.length === 0) {
         const SEEDS = [
             {
                 username: 'admin', password: '123456', name: '王建国', nickname: '老王',
@@ -123,73 +81,76 @@ async function initDb() {
         ]
         for (const u of SEEDS) {
             const hash = await bcrypt.hash(u.password, 10)
-            await _insertUser(u.username, u.email, hash, u)
+            _insertUserSync(db, u.username, u.email, hash, u)
         }
+        save(db)
         console.log('  ✓ 已播种用户 admin / user（密码 123456，已 bcrypt 哈希）')
+    } else {
+        save(db)
     }
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────
 async function createUser(username, email, passwordHash, extra = {}) {
-    const id = await _insertUser(username, email, passwordHash, extra)
+    const db = load()
+    const id = _insertUserSync(db, username, email, passwordHash, extra)
+    save(db)
     return id
 }
 
-async function _insertUser(username, email, passwordHash, extra = {}) {
-    const [r] = await pool.execute(
-        `INSERT INTO users
-         (username, email, password_hash, avatar_url, name, nickname, role, phone, gender,
-          department, position, bio, location, website, status, permissions, tags, preferences, stats)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-            username,
-            email         || null,
-            passwordHash,
-            extra.avatar_url  || null,
-            extra.name        || username,
-            extra.nickname    || username,
-            extra.role        || 'user',
-            extra.phone       || null,
-            extra.gender      || null,
-            extra.department  || null,
-            extra.position    || null,
-            extra.bio         || null,
-            extra.location    || null,
-            extra.website     || null,
-            extra.status      || 'active',
-            JSON.stringify(extra.permissions || []),
-            JSON.stringify(extra.tags        || []),
-            JSON.stringify(extra.preferences || {}),
-            JSON.stringify(extra.stats       || { loginCount: 0, promptCount: 0, chatCount: 0 }),
-        ]
-    )
-    return r.insertId
+function _insertUserSync(db, username, email, passwordHash, extra = {}) {
+    const id = nextId(db, 'users')
+    const ts = now()
+    db.users.push({
+        id,
+        username,
+        email:         email            || null,
+        password_hash: passwordHash,
+        avatar_url:    extra.avatar_url || null,
+        name:          extra.name       || username,
+        nickname:      extra.nickname   || username,
+        role:          extra.role       || 'user',
+        phone:         extra.phone      || null,
+        gender:        extra.gender     || null,
+        department:    extra.department || null,
+        position:      extra.position   || null,
+        bio:           extra.bio        || null,
+        location:      extra.location   || null,
+        website:       extra.website    || null,
+        status:        extra.status     || 'active',
+        permissions:   extra.permissions || [],
+        tags:          extra.tags        || [],
+        preferences:   extra.preferences || {},
+        stats:         extra.stats       || { loginCount: 0, promptCount: 0, chatCount: 0 },
+        last_login_at: null,
+        created_at:    ts,
+        updated_at:    ts,
+    })
+    return id
 }
 
 async function getUserById(id) {
-    const [rows] = await pool.execute('SELECT * FROM users WHERE id = ?', [id])
-    return rows[0] ? fmtUser(rows[0]) : null
+    const row = load().users.find(u => sameId(u.id, id))
+    return row ? fmtUser(row) : null
 }
 
 async function getUserByUsername(username) {
-    const [rows] = await pool.execute('SELECT * FROM users WHERE username = ?', [username])
-    return rows[0] || null   // 保留原始行（含 password_hash）
+    // 保留原始行（含 password_hash），与原实现一致
+    return load().users.find(u => u.username === username) || null
 }
 
 async function getAllUsers() {
-    const [rows] = await pool.execute('SELECT * FROM users ORDER BY id')
-    return rows.map(fmtUser)
+    return load().users.slice().sort((a, b) => a.id - b.id).map(fmtUser)
 }
 
 async function updateUserLogin(id) {
-    await pool.execute(
-        `UPDATE users SET
-            last_login_at = NOW(),
-            stats = JSON_SET(COALESCE(stats, '{}'), '$.loginCount',
-                COALESCE(JSON_EXTRACT(stats, '$.loginCount'), 0) + 1)
-         WHERE id = ?`,
-        [id]
-    )
+    const db  = load()
+    const row = db.users.find(u => sameId(u.id, id))
+    if (!row) return
+    row.last_login_at = now()
+    row.updated_at    = now()
+    row.stats = { ...(row.stats || {}), loginCount: Number(row.stats?.loginCount || 0) + 1 }
+    save(db)
 }
 
 function fmtUser(row) {
@@ -221,73 +182,88 @@ function fmtUser(row) {
 
 // ── Conversations ─────────────────────────────────────────────────────────────
 async function createConversation(userId, title = '新对话') {
-    const [r] = await pool.execute(
-        'INSERT INTO conversations (user_id, title) VALUES (?, ?)',
-        [userId, title]
-    )
-    const [rows] = await pool.execute('SELECT * FROM conversations WHERE id = ?', [r.insertId])
-    return fmtConv(rows[0], 0)
+    const db = load()
+    const id = nextId(db, 'conversations')
+    const ts = now()
+    const row = {
+        id,
+        user_id:       userId,
+        title:         title || '新对话',
+        model:         'google/gemma-3-4b',
+        system_prompt: null,
+        is_pinned:     false,
+        is_archived:   false,
+        created_at:    ts,
+        updated_at:    ts,
+    }
+    db.conversations.push(row)
+    save(db)
+    return fmtConv(row, 0)
 }
 
 async function getUserConversations(userId, limit = 50) {
-    const [rows] = await pool.execute(
-        `SELECT c.*, COUNT(m.id) AS message_count
-         FROM conversations c
-         LEFT JOIN messages m ON m.conversation_id = c.id
-         WHERE c.user_id = ? AND c.is_archived = FALSE
-         GROUP BY c.id
-         ORDER BY c.updated_at DESC
-         LIMIT ?`,
-        [userId, limit]
-    )
-    return rows.map(r => fmtConv(r, Number(r.message_count)))
+    const db = load()
+    return db.conversations
+        .filter(c => sameId(c.user_id, userId) && !c.is_archived)
+        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+        .slice(0, limit)
+        .map(c => fmtConv(c, db.messages.filter(m => sameId(m.conversation_id, c.id)).length))
 }
 
 async function getConversation(id, userId) {
-    const [rows] = await pool.execute(
-        'SELECT * FROM conversations WHERE id = ? AND user_id = ?',
-        [id, userId]
-    )
-    if (!rows[0]) return null
+    const db  = load()
+    const row = db.conversations.find(c => sameId(c.id, id) && sameId(c.user_id, userId))
+    if (!row) return null
     const msgs = await getConversationMessages(id)
-    return { ...fmtConv(rows[0], msgs.length), messages: msgs }
+    return { ...fmtConv(row, msgs.length), messages: msgs }
 }
 
 async function updateConversationTitle(id, title, userId) {
-    const [r] = await pool.execute(
-        'UPDATE conversations SET title = ?, updated_at = NOW() WHERE id = ? AND user_id = ?',
-        [title, id, userId]
-    )
-    return r.affectedRows > 0
+    const db  = load()
+    const row = db.conversations.find(c => sameId(c.id, id) && sameId(c.user_id, userId))
+    if (!row) return false
+    row.title      = title
+    row.updated_at = now()
+    save(db)
+    return true
 }
 
 async function deleteConversation(id, userId) {
-    const [r] = await pool.execute(
-        'DELETE FROM conversations WHERE id = ? AND user_id = ?',
-        [id, userId]
-    )
-    return r.affectedRows > 0
+    const db  = load()
+    const idx = db.conversations.findIndex(c => sameId(c.id, id) && sameId(c.user_id, userId))
+    if (idx === -1) return false
+    db.conversations.splice(idx, 1)
+    // 复刻 FOREIGN KEY ... ON DELETE CASCADE
+    db.messages = db.messages.filter(m => !sameId(m.conversation_id, id))
+    save(db)
+    return true
 }
 
 // ── Messages ──────────────────────────────────────────────────────────────────
 async function addMessage(conversationId, role, content) {
-    const [r] = await pool.execute(
-        'INSERT INTO messages (conversation_id, role, content) VALUES (?, ?, ?)',
-        [conversationId, role, content]
-    )
-    await pool.execute(
-        'UPDATE conversations SET updated_at = NOW() WHERE id = ?',
-        [conversationId]
-    )
-    return r.insertId
+    const db = load()
+    const id = nextId(db, 'messages')
+    db.messages.push({
+        id,
+        conversation_id: conversationId,
+        role,
+        content,
+        tokens:     0,
+        metadata:   null,
+        created_at: now(),
+    })
+    const conv = db.conversations.find(c => sameId(c.id, conversationId))
+    if (conv) conv.updated_at = now()
+    save(db)
+    return id
 }
 
 async function getConversationMessages(conversationId) {
-    const [rows] = await pool.execute(
-        'SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
-        [conversationId]
-    )
-    return rows.map(fmtMsg)
+    return load().messages
+        .filter(m => sameId(m.conversation_id, conversationId))
+        // 同毫秒写入时按 id 兜底，保证 user/assistant 的先后顺序稳定
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at) || a.id - b.id)
+        .map(fmtMsg)
 }
 
 // ── Formatters ────────────────────────────────────────────────────────────────
@@ -326,54 +302,58 @@ function fmtMsg(row) {
 async function upsertFeedback(messageId, userId, feedbackType, opts = {}) {
     const { reasonTags = null, comment = null, userQuery = null, aiResponse = null, conversationId = null } = opts
     const tagsStr = Array.isArray(reasonTags) ? reasonTags.join(',') : reasonTags
-    await pool.execute(
-        `INSERT INTO conversation_feedback
-            (message_id, user_id, conversation_id, feedback_type, reason_tags, comment, user_query, ai_response)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE
-            feedback_type = VALUES(feedback_type),
-            reason_tags   = VALUES(reason_tags),
-            comment       = VALUES(comment),
-            updated_at    = NOW()`,
-        [messageId, userId, conversationId || null, feedbackType, tagsStr, comment || null, userQuery || null, aiResponse || null]
-    )
+
+    const db = load()
+    // 复刻 UNIQUE KEY uk_msg_user (message_id, user_id) + ON DUPLICATE KEY UPDATE
+    const row = db.feedback.find(f => sameId(f.message_id, messageId) && sameId(f.user_id, userId))
+    if (row) {
+        row.feedback_type = feedbackType
+        row.reason_tags   = tagsStr
+        row.comment       = comment || null
+        row.updated_at    = now()
+    } else {
+        const ts = now()
+        db.feedback.push({
+            id:              nextId(db, 'feedback'),
+            message_id:      messageId,
+            user_id:         userId,
+            conversation_id: conversationId || null,
+            feedback_type:   feedbackType,
+            reason_tags:     tagsStr,
+            comment:         comment    || null,
+            user_query:      userQuery  || null,
+            ai_response:     aiResponse || null,
+            created_at:      ts,
+            updated_at:      ts,
+        })
+    }
+    save(db)
 }
 
 async function deleteFeedback(messageId, userId) {
-    const [r] = await pool.execute(
-        'DELETE FROM conversation_feedback WHERE message_id = ? AND user_id = ?',
-        [messageId, userId]
-    )
-    return r.affectedRows > 0
+    const db  = load()
+    const idx = db.feedback.findIndex(f => sameId(f.message_id, messageId) && sameId(f.user_id, userId))
+    if (idx === -1) return false
+    db.feedback.splice(idx, 1)
+    save(db)
+    return true
 }
 
 async function getFeedbackStats(userId, conversationId = null) {
-    let sql = `SELECT
-        SUM(feedback_type = 1) AS likes,
-        SUM(feedback_type = -1) AS dislikes,
-        COUNT(*) AS total
-        FROM conversation_feedback WHERE user_id = ?`
-    const params = [userId]
-    if (conversationId) {
-        sql += ' AND conversation_id = ?'
-        params.push(conversationId)
-    }
-    const [[row]] = await pool.execute(sql, params)
+    let rows = load().feedback.filter(f => sameId(f.user_id, userId))
+    if (conversationId) rows = rows.filter(f => sameId(f.conversation_id, conversationId))
     return {
-        likes:    Number(row.likes    || 0),
-        dislikes: Number(row.dislikes || 0),
-        total:    Number(row.total    || 0),
+        likes:    rows.filter(f => f.feedback_type === 1).length,
+        dislikes: rows.filter(f => f.feedback_type === -1).length,
+        total:    rows.length,
     }
 }
 
 async function getMessageFeedback(messageIds, userId) {
     if (!messageIds || messageIds.length === 0) return {}
-    const placeholders = messageIds.map(() => '?').join(',')
-    const [rows] = await pool.execute(
-        `SELECT message_id, feedback_type, reason_tags, comment
-         FROM conversation_feedback
-         WHERE message_id IN (${placeholders}) AND user_id = ?`,
-        [...messageIds, userId]
+    const ids  = messageIds.map(String)
+    const rows = load().feedback.filter(
+        f => ids.includes(String(f.message_id)) && sameId(f.user_id, userId)
     )
     const map = {}
     for (const r of rows) {
@@ -387,7 +367,7 @@ async function getMessageFeedback(messageIds, userId) {
 }
 
 module.exports = {
-    pool, initDb,
+    initDb,
     // users
     createUser, getUserById, getUserByUsername, getAllUsers, updateUserLogin,
     // conversations

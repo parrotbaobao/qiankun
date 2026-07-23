@@ -1,0 +1,100 @@
+{
+  "_seq": {
+    "users": 2,
+    "conversations": 1,
+    "messages": 2,
+    "feedback": 1
+  },
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "email": "wangjg@company.com",
+      "password_hash": "$2b$10$EhVmKMIUYGDQmXJqdwXL1uy5lz5zXsez.7zWztTcOFjatwyS8eN9y",
+      "avatar_url": "https://api.dicebear.com/9.x/avataaars/svg?seed=admin&backgroundColor=b6e3f4",
+      "name": "王建国",
+      "nickname": "老王",
+      "role": "admin",
+      "phone": "138****8001",
+      "gender": "male",
+      "department": "技术部",
+      "position": "系统架构师",
+      "bio": "10年+全栈开发经验，热爱开源，专注于AI应用开发",
+      "location": "上海",
+      "website": "https://github.com/wangjg",
+      "status": "active",
+      "permissions": [
+        "user:read",
+        "user:write",
+        "user:delete",
+        "prompt:read",
+        "prompt:write",
+        "prompt:delete",
+        "system:admin"
+      ],
+      "tags": [
+        "核心成员",
+        "全栈工程师",
+        "AI爱好者"
+      ],
+      "preferences": {
+        "theme": "light",
+        "language": "zh-CN",
+        "notifications": true,
+        "compactMode": false
+      },
+      "stats": {
+        "loginCount": 316,
+        "promptCount": 87,
+        "chatCount": 1024
+      },
+      "last_login_at": "2026-07-22T08:42:28.704Z",
+      "created_at": "2026-07-21T10:05:09.709Z",
+      "updated_at": "2026-07-22T08:42:28.704Z"
+    },
+    {
+      "id": 2,
+      "username": "user",
+      "email": "lixm@company.com",
+      "password_hash": "$2b$10$x.tTbFG.ZHDr6NIKGX98Qe4ZFwsL0v0d8EjW1Srh./am/xkzyshiK",
+      "avatar_url": "https://api.dicebear.com/9.x/avataaars/svg?seed=user&backgroundColor=ffdfbf",
+      "name": "李晓明",
+      "nickname": "小李",
+      "role": "user",
+      "phone": "136****6688",
+      "gender": "male",
+      "department": "产品部",
+      "position": "产品经理",
+      "bio": "专注于AI产品设计，热衷于探索新技术与用户体验",
+      "location": "北京",
+      "website": null,
+      "status": "active",
+      "permissions": [
+        "prompt:read",
+        "prompt:write",
+        "user:read"
+      ],
+      "tags": [
+        "产品经理",
+        "AI探索者"
+      ],
+      "preferences": {
+        "theme": "light",
+        "language": "zh-CN",
+        "notifications": true,
+        "compactMode": true
+      },
+      "stats": {
+        "loginCount": 52,
+        "promptCount": 12,
+        "chatCount": 89
+      },
+      "last_login_at": "2026-07-21T13:07:14.900Z",
+      "created_at": "2026-07-21T10:05:09.778Z",
+      "updated_at": "2026-07-21T13:07:14.900Z"
+    }
+  ],
+  "conversations": [],
+  "messages": [],
+  "feedback": []
+}
