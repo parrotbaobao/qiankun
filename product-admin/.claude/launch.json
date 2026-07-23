@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "product-admin",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["ng", "serve", "--port", "4200"],
+      "port": 4200
+    },
+    {
+      "name": "product-admin-prod",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["http-server", "dist/product-admin/browser", "-p", "4300", "-c-1", "--gzip", "--proxy", "http://localhost:4300?"],
+      "port": 4300
+    }
+  ]
+}
