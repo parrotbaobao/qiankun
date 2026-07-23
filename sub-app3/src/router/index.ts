@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { qiankunWindow } from 'vite-plugin-qiankun/dist/helper'
+import { useAuthStore } from '../stores/auth'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -44,11 +45,19 @@ const routes: RouteRecordRaw[] = [
     path: '/ui-demo',
     name: 'ui-demo',
     component: () => import('../views/UiDemo.vue'),
+    meta: { public: true },
   },
   {
     path: '/virtual-scroller',
     name: 'virtual-scroller',
     component: () => import('../views/VirtualScrollerDemo.vue'),
+    meta: { public: true },
+  },
+  {
+    path: '/zombie-tab-test',
+    name: 'zombie-tab-test',
+    component: () => import('../views/ZombieTabTest.vue'),
+    meta: { public: true },
   },
   {
     path: '/',
@@ -63,20 +72,20 @@ const router = createRouter({
   routes,
 })
 
-// router.beforeEach(async (to, _from, next) => {
-//   if (to.meta.public) return next()
+router.beforeEach(async (to, _from, next) => {
+  if (to.meta.public) return next()
 
-//   const auth = useAuthStore()
+  const auth = useAuthStore()
 
-//   if (auth.token && !auth.user) {
-//     await auth.fetchMe()
-//   }
+  if (auth.token && !auth.user) {
+    await auth.fetchMe()
+  }
 
-//   if (!auth.isLoggedIn) {
-//     return next({ name: 'login', query: { redirect: to.fullPath } })
-//   }
+  if (!auth.isLoggedIn) {
+    return next({ name: 'login', query: { redirect: to.fullPath } })
+  }
 
-//   next()
-// })
+  next()
+})
 
 export default router

@@ -34,24 +34,43 @@ watch(prompt, (p) => {
 }, { immediate: true })
 
 // ── Left panel – Model settings ───────────────────────────────────────────────
+// AiChat 走 OpenAI 兼容格式（messages[] + 采样参数），对应 /v1/chat/completions。
+// 旧的 /api/chat 是面试专用接口（收 { message, history }），格式不兼容，故不再作为选项。
 const APIS = [
-  { value: 'http://localhost:3200/api/chat', label: '面试对话' },
-  { value: 'http://localhost:3200/api/chat', label: '通用问答' },
+  { value: 'http://localhost:3200/v1/chat/completions', label: '对话补全 (OpenAI 兼容)' },
 ]
-const selectedApi = ref('http://localhost:3200/api/chat')
+const selectedApi = ref('http://localhost:3200/v1/chat/completions')
 
 const MODELS = [
-  { value: 'deepseek/deepseek-r1-0528-qwen3-8b:4', label: 'DeepSeek R1 (Local)' },
+  { value: 'deepseek/deepseek-r1-0528-qwen3-8b', label: 'DeepSeek R1 (Local)' },
   { value: 'google/gemma-3-4b', label: 'Gemma 3 4B (Local)' },
   { value: 'google/gemma-3-12b', label: 'Gemma 3 12B' },
   { value: 'meta-llama/llama-3.1-8b-instruct', label: 'Llama 3.1 8B' },
   { value: 'deepseek/deepseek-r1', label: 'DeepSeek R1' },
   { value: 'qwen/qwen2.5-7b-instruct', label: 'Qwen 2.5 7B' },
 ]
-const model = ref('deepseek/deepseek-r1-0528-qwen3-8b:4')
+const model = ref('deepseek/deepseek-r1-0528-qwen3-8b')
 const temperature = ref(0.7)
 const maxTokens = ref(512)
 const topP = ref(1.0)
+const topK = ref(0)              // 0 = 不启用
+const frequencyPenalty = ref(0)  // -2 ~ 2
+const presencePenalty = ref(0)   // -2 ~ 2
+const stopInput = ref('')        // 逗号分隔，最多 4 个
+const seedInput = ref('')        // 空 = 随机
+
+// 停止词：逗号分隔 → 去空 → 最多 4 个
+const stopSequences = computed(() =>
+  stopInput.value.split(',').map(s => s.trim()).filter(Boolean).slice(0, 4),
+)
+
+// 随机种子：留空视为不传（每次随机）
+const seedValue = computed<number | undefined>(() => {
+  const raw = seedInput.value.trim()
+  if (!raw) return undefined
+  const n = Number(raw)
+  return Number.isInteger(n) ? n : undefined
+})
 
 // ── Left panel – Save ─────────────────────────────────────────────────────────
 const saving = ref(false)
@@ -319,6 +338,52 @@ onMounted(async () => {
             <input type="number" v-model.number="maxTokens" min="128" max="2048" step="128" class="ctrl-number" />
           </section>
 
+          <section class="panel-section">
+            <div class="panel-label">
+              <span>TOP K</span>
+              <span class="param-chip">{{ topK === 0 ? '关' : topK }}</span>
+            </div>
+            <input type="range" v-model.number="topK" min="0" max="100" step="1" class="ctrl-range" />
+            <div class="range-labels"><span>关</span><span>100</span></div>
+          </section>
+
+          <section class="panel-section">
+            <div class="panel-label">
+              <span>FREQUENCY PENALTY</span>
+              <span class="param-chip">{{ frequencyPenalty.toFixed(2) }}</span>
+            </div>
+            <input type="range" v-model.number="frequencyPenalty" min="-2" max="2" step="0.01" class="ctrl-range" />
+            <div class="range-labels"><span>-2</span><span>2</span></div>
+          </section>
+
+          <section class="panel-section">
+            <div class="panel-label">
+              <span>PRESENCE PENALTY</span>
+              <span class="param-chip">{{ presencePenalty.toFixed(2) }}</span>
+            </div>
+            <input type="range" v-model.number="presencePenalty" min="-2" max="2" step="0.01" class="ctrl-range" />
+            <div class="range-labels"><span>-2</span><span>2</span></div>
+          </section>
+
+          <section class="panel-section">
+            <div class="panel-label">
+              <span>STOP</span>
+              <span class="label-hint">逗号分隔 · 最多 4 个</span>
+            </div>
+            <input v-model="stopInput" class="ctrl-number" placeholder="如：###, END, 观察" />
+            <div v-if="stopSequences.length" class="stop-tags">
+              <span v-for="s in stopSequences" :key="s" class="stop-tag">{{ s }}</span>
+            </div>
+          </section>
+
+          <section class="panel-section">
+            <div class="panel-label">
+              <span>SEED</span>
+              <span class="label-hint">留空为随机</span>
+            </div>
+            <input type="number" v-model="seedInput" step="1" placeholder="可复现的随机种子" class="ctrl-number" />
+          </section>
+
           <!-- Actions -->
           <section class="panel-section panel-section--actions">
             <button class="action-btn action-btn--outline" @click="openSaveModal">
@@ -338,8 +403,10 @@ onMounted(async () => {
       <!-- ═══ RIGHT PANEL – Chat ═══ -->
       <div class="pg-right">
         <AiChat ref="chatRef" :key="currentConvId || '__no_conv__'" :system-prompt="filledPrompt" :title="prompt.title"
-          :temperature="temperature" :model="model" :max-tokens="maxTokens" :top-p="topP" :hide-header="true"
-          :url="selectedApi" :conversation-id="currentConvId || undefined" @conversation-updated="handleConvUpdated" />
+          :temperature="temperature" :model="model" :max-tokens="maxTokens" :top-p="topP" :top-k="topK"
+          :frequency-penalty="frequencyPenalty" :presence-penalty="presencePenalty" :stop="stopSequences"
+          :seed="seedValue" :hide-header="true" :url="selectedApi" :conversation-id="currentConvId || undefined"
+          @conversation-updated="handleConvUpdated" />
       </div>
 
       <!-- ═══ HISTORY PANEL ═══ -->
@@ -760,6 +827,22 @@ onMounted(async () => {
 
 .ctrl-number:focus {
   border-color: #4f46e5;
+}
+
+.stop-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stop-tag {
+  font-size: 11px;
+  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  color: #4f46e5;
+  background: #ede9fe;
+  padding: 2px 8px;
+  border-radius: 5px;
+  white-space: pre;
 }
 
 /* ── Action buttons ── */

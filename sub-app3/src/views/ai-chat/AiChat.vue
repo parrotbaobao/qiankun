@@ -6,6 +6,7 @@
                 <IconBolt :size="15" />
             </div>
             <span>{{ title || 'AI 助手' }}</span>
+            <span v-if="phaseLabel" class="chat-phase-pill" :data-phase="phase">{{ phaseLabel }}</span>
         </header>
         <!-- 空态 -->
         <div v-if="!displayMessages.length" class="chat-empty">
@@ -59,8 +60,7 @@ import IconChat from '@/components/icons/IconChat.vue'
 import IconStopSquare from '@/components/icons/IconStopSquare.vue'
 import IconSend from '@/components/icons/IconSend.vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import { createChatStream } from '@/services/chat.service'
-import type { Subscription } from 'rxjs'
+import { createChatStream, type ChatState } from '@/services/chat.service'
 import ChatMessageItem from './ChatMessageItem.vue'
 import type { ChatMessage as Message } from './ChatMessageItem.vue'
 import { ConversationService } from '../../services/conversation.service'
@@ -73,6 +73,11 @@ const props = defineProps<{
     model?: string
     maxTokens?: number
     topP?: number
+    topK?: number
+    frequencyPenalty?: number
+    presencePenalty?: number
+    stop?: string[]
+    seed?: number
     hideHeader?: boolean
     url?: string
     conversationId?: string   // ← 关联后端对话
@@ -126,14 +131,24 @@ function autoResize() {
 }
 
 // ── send & stream ─────────────────────────────────────────────────────────────
-let sub: Subscription
-let abortFn: () => void
+let abortFn: (() => void) | null = null
+const phase = ref<ChatState['kind']>('idle')
+const reconnectAttempt = ref(0)
+const phaseLabel = computed(() => {
+    switch (phase.value) {
+        case 'connecting': return '连接中…'
+        case 'reconnecting': return `重连中 (${reconnectAttempt.value})`
+        case 'streaming': return '生成中'
+        case 'error': return '出错'
+        case 'aborted': return '已停止'
+        default: return ''
+    }
+})
 
 function send() {
     const text = inputText.value.trim()
     if (!text) return
 
-    sub?.unsubscribe()
     abortFn?.()
 
     messages.push({ id: crypto.randomUUID(), from: 'user', content: text, createdAt: Date.now() })
@@ -163,8 +178,8 @@ function scrollToBottom() {
 }
 
 function stop() {
-    sub?.unsubscribe()
     abortFn?.()
+    abortFn = null
     streaming.value = false
     if (streamingMessage.value) {
         streamingMessage.value.status = 'STOPPED'
@@ -172,8 +187,6 @@ function stop() {
         streamingMessage.value = null
     }
 }
-
-const reconnectAttempt = ref(0)
 
 // ── 加载历史对话 ──────────────────────────────────────────────────────────────
 onMounted(async () => {
@@ -186,12 +199,27 @@ onMounted(async () => {
             from: m.role === 'user' ? 'user' : 'ai',
             content: m.content,
             createdAt: m.createdAt,
+            // 历史 AI 消息同样标记为已完成，否则复制/点赞/重新生成按钮不会出现
+            status: m.role === 'user' ? undefined : 'DONE',
         }))
         nextTick(() => scrollerRef.value?.scrollToBottom?.())
+        await restoreFeedback()
     } catch { /* 新对话，忽略 */ }
 })
 
-const CHAT_STREAM_URL = 'http://192.168.31.203/api/chat/stream'
+// 回填历史消息的点赞/点踩状态
+async function restoreFeedback() {
+    const ids = messages.filter(m => m.from === 'ai').map(m => m.id)
+    if (!ids.length) return
+    try {
+        const map = await FeedbackService.getForMessages(ids)
+        for (const [id, info] of Object.entries(map)) {
+            if (info?.feedbackType) feedbackMap[id] = info.feedbackType
+        }
+    } catch (err) { console.warn('[restoreFeedback]', err) }
+}
+
+const CHAT_STREAM_URL = 'http://localhost:3200/v1/chat/completions'
 
 function sendToAI(text: string) {
     streaming.value = true
@@ -204,9 +232,22 @@ function sendToAI(text: string) {
             .map(m => ({ role: m.from === 'user' ? 'user' : 'assistant', content: m.content })),
     ]
 
+    // 基础采样参数，附加参数仅在显式设置时才带上（避免给后端塞默认值）
+    const body: Record<string, unknown> = {
+        model: props.model || 'deepseek/deepseek-r1-0528-qwen3-8b',
+        messages: llmMessages,
+        temperature: props.temperature ?? 0.7,
+        max_tokens: props.maxTokens ?? 1024,
+        top_p: props.topP ?? 1,
+    }
+    if (props.topK != null && props.topK > 0) body.top_k = props.topK
+    if (props.frequencyPenalty) body.frequency_penalty = props.frequencyPenalty
+    if (props.presencePenalty) body.presence_penalty = props.presencePenalty
+    if (props.stop?.length) body.stop = props.stop
+    if (props.seed != null) body.seed = props.seed
+
     const token = localStorage.getItem('auth_token') ?? ''
-    const { text$, abort } = createChatStream({
-        retry: false,
+    const { abort } = createChatStream({
         url: props.url ?? CHAT_STREAM_URL,
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         maxRetries: 3,
@@ -217,12 +258,10 @@ function sendToAI(text: string) {
             streamingMessage.value.content = ''
             streamingMessage.value.status = 'RECONNECTING'
         },
-        body: {
-            model: props.model || 'deepseek/deepseek-r1-0528-qwen3-8b:4',
-            messages: llmMessages,
-            temperature: props.temperature ?? 0.7,
-            max_tokens: props.maxTokens ?? 1024,
+        onStateChange(s) {
+            phase.value = s.kind
         },
+        body,
         pickText: (data: string) => {
             if (data === '[DONE]') return ''
             try {
@@ -230,12 +269,7 @@ function sendToAI(text: string) {
                 return obj.choices?.[0]?.delta?.content ?? ''
             } catch { return '' }
         },
-    })
-
-    abortFn = abort
-
-    sub = text$.subscribe({
-        next(value) {
+        onText(value) {
             if (!streamingMessage.value) return
             streamingMessage.value.loading = false
             streamingMessage.value.status = undefined
@@ -243,7 +277,7 @@ function sendToAI(text: string) {
             reconnectAttempt.value = 0
             if (!document.hidden) scrollToBottom()
         },
-        error(err) {
+        onError(err: any) {
             streaming.value = false
             if (streamingMessage.value) {
                 streamingMessage.value.loading = false
@@ -254,14 +288,13 @@ function sendToAI(text: string) {
             }
             emit('conversation-updated')
         },
-        complete() {
+        onDone() {
             streaming.value = false
             if (streamingMessage.value) {
                 const aiContent = streamingMessage.value.content
                 streamingMessage.value.status = 'DONE'
                 messages.push(streamingMessage.value)
                 streamingMessage.value = null
-                // 流结束后将本轮对话存到后端（仅在有对话 ID 时）
                 if (props.conversationId && aiContent) {
                     ConversationService.appendMessages(props.conversationId, text, aiContent)
                         .catch(err => console.warn('[appendMessages]', err))
@@ -271,6 +304,8 @@ function sendToAI(text: string) {
             emit('conversation-updated')
         },
     })
+
+    abortFn = abort
 }
 
 // ── feedback actions ──────────────────────────────────────────────────────────
@@ -358,7 +393,7 @@ function getPrevUserMessage(item: Message): string {
     return ''
 }
 
-onBeforeUnmount(() => { sub?.unsubscribe(); abortFn?.() })
+onBeforeUnmount(() => { abortFn?.() })
 </script>
 
 <style scoped lang="scss">
@@ -537,4 +572,18 @@ onBeforeUnmount(() => { sub?.unsubscribe(); abortFn?.() })
     color: #c0c0c0;
     text-align: center;
 }
+.chat-phase-pill {
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    line-height: 1.4;
+    background: #eef2ff;
+    color: #4f46e5;
+    border: 1px solid #e0e7ff;
+}
+.chat-phase-pill[data-phase="reconnecting"] { background:#fff7ed; color:#c2410c; border-color:#fed7aa; }
+.chat-phase-pill[data-phase="streaming"]    { background:#ecfdf5; color:#047857; border-color:#a7f3d0; }
+.chat-phase-pill[data-phase="error"]        { background:#fef2f2; color:#b91c1c; border-color:#fecaca; }
+.chat-phase-pill[data-phase="aborted"]      { background:#f3f4f6; color:#4b5563; border-color:#e5e7eb; }
 </style>

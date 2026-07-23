@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "wujie-main",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "wujie/main-app"],
+      "port": 7100
+    },
+    {
+      "name": "sub-app3",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "sub-app3"],
+      "port": 5174
+    }
+  ]
+}

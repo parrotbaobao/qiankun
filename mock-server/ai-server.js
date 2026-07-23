@@ -9,7 +9,7 @@ const OpenAI  = require('openai').default ?? require('openai')
 const app  = express()
 const PORT = 3200
 
-app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type'] }))
+app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'Authorization'] }))
 app.use(express.json({ limit: '4mb' }))
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -19,7 +19,7 @@ function createClient() {
     // ── 优先：LM Studio 本地部署 ──────────────────────────────────────────────
     if (!useCloud) {
         const baseURL = process.env.LM_STUDIO_BASE_URL || 'http://192.168.31.203:1234/v1'
-        const model   = process.env.LM_STUDIO_MODEL    || 'deepseek/deepseek-r1-0528-qwen3-8b:4'
+        const model   = process.env.LM_STUDIO_MODEL    || 'deepseek/deepseek-r1-0528-qwen3-8b'
         return {
             client: new OpenAI({ apiKey: 'lm-studio', baseURL }),
             model,
@@ -178,18 +178,29 @@ function sseSend(res, data) {
 // ── POST /v1/chat/completions（OpenAI-compatible passthrough）─────────────────
 // chunk 原样透传：前端 pickText 自行处理 delta.reasoning_content / delta.content
 app.post('/v1/chat/completions', async (req, res) => {
-    const { messages, temperature, max_tokens } = req.body
+    const {
+        messages, temperature, max_tokens,
+        top_p, top_k, frequency_penalty, presence_penalty, stop, seed,
+    } = req.body
     if (!messages?.length) return res.status(400).json({ error: 'messages is required' })
 
     sseSetup(res)
 
     try {
         const { client, model } = createClient()
-        const stream = await client.chat.completions.create({
+        // 只转发显式传入的采样参数（LM Studio 兼容 top_k 等非标准字段）
+        const params = {
             model, messages, stream: true,
             temperature: temperature ?? 0.7,
             max_tokens: max_tokens ?? 8192,
-        })
+        }
+        if (top_p != null) params.top_p = top_p
+        if (top_k != null) params.top_k = top_k
+        if (frequency_penalty != null) params.frequency_penalty = frequency_penalty
+        if (presence_penalty != null) params.presence_penalty = presence_penalty
+        if (stop != null) params.stop = stop
+        if (seed != null) params.seed = seed
+        const stream = await client.chat.completions.create(params)
         for await (const chunk of stream) {
             res.write(`data: ${JSON.stringify(chunk)}\n\n`)
         }
@@ -376,7 +387,7 @@ app.listen(PORT, () => {
     const useCloud = process.env.USE_CLOUD_FALLBACK === 'true'
     if (!useCloud) {
         const baseURL = process.env.LM_STUDIO_BASE_URL || 'http://192.168.31.203:1234/v1'
-        const model   = process.env.LM_STUDIO_MODEL    || 'deepseek/deepseek-r1-0528-qwen3-8b:4'
+        const model   = process.env.LM_STUDIO_MODEL    || 'deepseek/deepseek-r1-0528-qwen3-8b'
         console.log(`AI server → http://localhost:${PORT}`)
         console.log(`  ✓ LM Studio  ${baseURL}  model=${model}`)
     } else {
