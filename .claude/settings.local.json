@@ -119,7 +119,8 @@
       "Bash(kill -9 8965 8962 8968)",
       "Bash(pkill -9 -f \"11916\\\\|11931\\\\|11934\")",
       "Bash(pkill -9 -f \"node.*ng.js serve --port 800\")",
-      "Bash(pkill -9 -f \"node.*ng.js serve --port 8085\")"
+      "Bash(pkill -9 -f \"node.*ng.js serve --port 8085\")",
+      "Bash(wait)"
     ]
   }
 }
