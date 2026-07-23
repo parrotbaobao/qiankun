@@ -157,7 +157,6 @@ import '@matechat/core/Input/index.css'
 import '@matechat/core/MarkdownCard/index.css'
 
 import { onBeforeUnmount, reactive, ref, nextTick } from 'vue'
-import type { Subscription } from 'rxjs'       // RxJS 订阅类型，用于流式请求的订阅管理
 import { createChatStream } from '@/services/chat.service'  // 项目内封装的 SSE 流式请求工具
 
 // ── 类型定义 ──────────────────────────────────────────────────────────────────
@@ -197,17 +196,13 @@ const feedbackMap = reactive<Record<number, 1 | -1>>({})  // 各消息的点赞(
 // idx=-1 表示当前没有弹窗打开（-1 是哨兵值，不会与任何消息索引相同）
 const dislike = reactive({ idx: -1, tags: [] as string[], comment: '' })
 
-// ── 流式请求的两个句柄 ────────────────────────────────────────────────────────
-// sub: RxJS Subscription，调用 sub.unsubscribe() 停止接收数据
-// abortFn: 调用后会终止底层的 fetchEventSource HTTP 连接
-let sub: Subscription
-let abortFn: () => void
+// ── 流式请求的句柄 ────────────────────────────────────────────────────────────
+// abortFn: 调用后会终止底层的 fetchEventSource HTTP 连接 + 清理打字机
+let abortFn: (() => void) | null = null
 
 // ── 生命周期：组件销毁时清理 ──────────────────────────────────────────────────
-// 不清理会导致：组件卸载后 SSE 连接仍在，回调试图更新已销毁的响应式数据，产生 Vue 警告
 onBeforeUnmount(() => {
-  sub?.unsubscribe()  // 取消 RxJS 订阅
-  abortFn?.()         // 中止 HTTP 请求
+  abortFn?.()
 })
 
 // ── 滚动到底部 ────────────────────────────────────────────────────────────────
@@ -221,7 +216,7 @@ function scrollToBottom() {
 // ── 开启新对话 ────────────────────────────────────────────────────────────────
 // 先取消当前流式请求，再清空所有状态
 function newConversation() {
-  sub?.unsubscribe(); abortFn?.()
+  abortFn?.()
   streaming.value = false
   messages.value = []
   inputText.value = ''
@@ -299,8 +294,8 @@ function handleSubmit(val?: string) {
 
   // ── 停止分支：streaming=true 时再次触发 = 中止请求 ──────────────────────────
   if (streaming.value) {
-    sub?.unsubscribe()  // 停止接收 SSE 数据
-    abortFn?.()         // 关闭底层 HTTP 连接
+    abortFn?.()         // 关闭底层 HTTP 连接 + 清理打字机
+    abortFn = null
     streaming.value = false
     const last = messages.value.at(-1)
     if (last?.from === 'ai') { last.loading = false; last.status = 'STOPPED' }
@@ -317,7 +312,7 @@ function handleSubmit(val?: string) {
   messages.value.push({ from: 'ai', content: '', loading: true })
   scrollToBottom()
   streaming.value = true
-  sub?.unsubscribe(); abortFn?.()  // 取消上一次未完成的请求
+  abortFn?.()  // 取消上一次未完成的请求
 
   // 3. 构造发给 LLM 的历史消息（OpenAI messages 格式）
   //    过滤掉：还在 loading 中的、内容为空的、状态为 ERROR 的消息
@@ -325,13 +320,10 @@ function handleSubmit(val?: string) {
     .filter(m => !m.loading && m.content && m.status !== 'ERROR')
     .map(m => ({ role: m.from === 'user' ? 'user' : 'assistant', content: m.content }))
 
-  // 4. 发起 SSE 流式请求
-  //    不传 url → chat.service.ts 默认用 LM Studio: http://192.168.31.203:1234/v1/chat/completions
-  const { text$, abort } = createChatStream({
-    retry: false,
+  // 4. 发起 SSE 流式请求（不传 url → chat.service 默认 LM Studio）
+  const { abort } = createChatStream({
     maxRetries: 1,
     onReconnecting(attempt) {
-      // 断线重连时重置最后一条 AI 消息，准备接收重连后的新内容
       const last = messages.value.at(-1)
       if (!last || last.from !== 'ai') return
       last.status = 'RECONNECTING'
@@ -340,15 +332,13 @@ function handleSubmit(val?: string) {
       console.log(`[重连] 第 ${attempt} 次`)
     },
     body: {
-      model: 'deepseek/deepseek-r1-0528-qwen3-8b:4',  // LM Studio 当前加载的模型
+      model: 'deepseek/deepseek-r1-0528-qwen3-8b',
       messages: llmMessages,
-      stream: true,        // 必须开启，否则返回普通 JSON 而非 SSE 流
-      temperature: 0.7,   // 创意度（0=严肃，1=随机）
-      max_tokens: 8192,   // 最大输出 token 数
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 8192,
     },
-    // pickText：从 SSE 数据帧中提取增量文字
     // OpenAI SSE 格式：data: {"choices":[{"delta":{"content":"..."}}]}
-    // '[DONE]' 是流结束信号，返回空串即可
     pickText: (data: string) => {
       if (data === '[DONE]') return ''
       try {
@@ -356,23 +346,15 @@ function handleSubmit(val?: string) {
         return obj.choices?.[0]?.delta?.content ?? ''
       } catch { return '' }
     },
-  })
-
-  abortFn = abort  // 保存中止函数，停止按钮会用到
-
-  // 5. 订阅流式数据（text$ 是 RxJS Observable）
-  sub = text$.subscribe({
-    // next：每次收到新 token，value 是打字机逐步吐出的"累计完整文本"
-    next(value) {
+    onText(value) {
       const last = messages.value.at(-1)
       if (!last || last.from !== 'ai') return
-      last.loading = false    // 拿到第一个 token 后关掉 loading 动画
-      last.status = undefined // 清除 RECONNECTING 状态
-      last.content = value    // 直接赋值（不是追加，chat.service 已经做了累积）
+      last.loading = false
+      last.status = undefined
+      last.content = value
       scrollToBottom()
     },
-    // error：请求失败（网络错误、超时等）
-    error(err) {
+    onError(err: any) {
       streaming.value = false
       const last = messages.value.at(-1)
       if (last?.from === 'ai') {
@@ -381,14 +363,15 @@ function handleSubmit(val?: string) {
         last.status = 'ERROR'
       }
     },
-    // complete：流正常结束（收到 [DONE]）
-    complete() {
+    onDone() {
       streaming.value = false
       const last = messages.value.at(-1)
       if (last?.from === 'ai') { last.loading = false; last.status = 'DONE' }
       scrollToBottom()
     },
   })
+
+  abortFn = abort
 }
 </script>
 

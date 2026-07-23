@@ -150,7 +150,6 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, reactive, ref, nextTick } from 'vue'
-import type { Subscription } from 'rxjs'
 import { createChatStream } from '@/services/chat.service'
 import Bubble from './Bubble.vue'
 import IconBolt from '@/components/icons/IconBolt.vue'
@@ -203,20 +202,12 @@ const mouseDown = ref(false)
 const scrollbarWidth = 8
 const headspace = 20
 
-let sub: Subscription
-let abortFn: () => void
+let abortFn: (() => void) | null = null
 
 /**
- * 组件卸载前清理副作用，防止内存泄漏。
- *
- * 需要清理的两个资源：
- *  - sub（RxJS Subscription）：取消对流式数据的订阅，停止回调。
- *  - abortFn（AbortController.abort）：终止未完成的 fetchEventSource 请求。
- *
- * 如果不清理：组件卸载后 SSE 连接仍在，next/error/complete 回调会试图更新
- * 已销毁的响应式状态，导致 Vue 警告或内存泄漏。
+ * 组件卸载前清理：终止 SSE 请求 + 清理打字机定时器/事件监听
  */
-onBeforeUnmount(() => { sub?.unsubscribe(); abortFn?.() })
+onBeforeUnmount(() => { abortFn?.() })
 
 /**
  * 鼠标滚轮事件处理，用于判断是否需要跟随 AI 输出自动滚底。
@@ -315,7 +306,7 @@ function scrollToBottom() {
  *  2. 重置所有状态：消息列表、输入框、滚动标志、反馈映射、点踩弹窗。
  */
 function newConversation() {
-  sub?.unsubscribe(); abortFn?.()
+  abortFn?.()
   streaming.value = false
   messages.value = []
   inputText.value = ''
@@ -483,35 +474,21 @@ function submitDislike(idx: number) {
  *
  * 对应 matechat message-store.ts 中的 ask() + getAIAnswer() 函数。
  *
- * ── 分支一：停止（streaming=true 时调用）──────────────────────────────────────
- *  取消订阅 RxJS Observable 并中止 fetchEventSource 请求，
- *  将最后一条 AI 消息状态置为 STOPPED（显示"已停止"标记）。
+ * ── 分支一：停止（streaming=true 时再次触发）──────────────────────────────────
+ *  调用 abortFn 终止 SSE + 清理打字机定时器，AI 消息置为 STOPPED。
  *
- * ── 分支二：发送（streaming=false 时调用）─────────────────────────────────────
- *  1. 推入用户消息到 messages 数组。
- *  2. 推入 loading=true 的 AI 占位消息（显示三点动画）。
- *  3. 构造 OpenAI 格式的历史消息列表（过滤掉 loading 中和 ERROR 的消息）。
- *  4. 调用 createChatStream 发起 SSE 流式请求。
- *  5. 订阅 text$ Observable，实时将累计文本更新到最后一条 AI 消息的 content。
- *
- * ── createChatStream 参数说明 ──────────────────────────────────────────────────
- *  - url 不传 → 使用 chat.service.ts 默认的 LM Studio 地址。
- *  - pickText  → 从 SSE 数据帧中提取 delta.content 文本（OpenAI SSE 格式）。
- *  - onReconnecting → 断线重连时显示"重连中"状态，重置 content 准备接收新内容。
- *
- * ── text$.subscribe 回调说明 ──────────────────────────────────────────────────
- *  - next(value)：每次收到新 token，value 是"已累计的完整文本"（由 chat.service.ts
- *    内的打字机逻辑控制节奏）。同时记录 startTime（第一个 token 到达时）。
- *  - error(err)：请求失败，将错误信息写入 AI 消息 content，标记 ERROR 状态。
- *  - complete()：流结束，标记 DONE 状态并记录 endTime（用于计算思考时间）。
+ * ── 分支二：发送（streaming=false 时）──────────────────────────────────────────
+ *  1. 推入用户消息 + AI 占位消息
+ *  2. 构造 OpenAI 格式历史消息
+ *  3. createChatStream(onText/onDone/onError) 启动流，回调里把累计文本写回 AI 消息
  */
 function handleSubmit(val?: string) {
   const text = (val ?? inputText.value).trim()
 
   // ── 停止分支 ──────────────────────────────────────────────────────────────
   if (streaming.value) {
-    sub?.unsubscribe()   // 取消 RxJS 订阅，停止回调
-    abortFn?.()          // 中止底层的 fetchEventSource HTTP 请求
+    abortFn?.()          // 中止 SSE + 清理打字机
+    abortFn = null
     streaming.value = false
     const last = messages.value.at(-1)
     if (last?.from === 'ai') { last.loading = false; last.status = 'STOPPED' }
@@ -527,53 +504,42 @@ function handleSubmit(val?: string) {
   messages.value.push({ from: 'ai', content: '', loading: true })
   scrollToBottom()
   streaming.value = true
-  sub?.unsubscribe(); abortFn?.()   // 取消上一次未完成的请求
+  abortFn?.()   // 取消上一次未完成的请求
 
   // 构造历史消息（过滤 loading 中和报错的消息，避免污染上下文）
   const llmMessages = messages.value
     .filter(m => !m.loading && m.content && m.status !== 'ERROR')
     .map(m => ({ role: m.from === 'user' ? 'user' : 'assistant', content: m.content }))
 
-  const { text$, abort } = createChatStream({
-    retry: false,
+  const { abort } = createChatStream({
     maxRetries: 1,
     onReconnecting(attempt) {
-      // 断线重连：重置最后一条 AI 消息，准备接收重连后的新内容
       const last = messages.value.at(-1)
       if (!last || last.from !== 'ai') return
       last.status = 'RECONNECTING'; last.loading = true; last.content = ''
       console.log(`[重连] 第 ${attempt} 次`)
     },
     body: {
-      model: 'deepseek/deepseek-r1-0528-qwen3-8b:4',
+      model: 'deepseek/deepseek-r1-0528-qwen3-8b',
       messages: llmMessages,
-      stream: true,        // 必须开启，否则返回普通 JSON 而非 SSE 流
+      stream: true,
       temperature: 0.7,
       max_tokens: 8192,
     },
-    // pickText：从 OpenAI SSE 数据帧中提取增量文本
-    // LM Studio 的 DeepSeek R1 直接在 delta.content 里用 <think> 标签包裹思考内容，
-    // 不使用 delta.reasoning_content，所以直接取 content 即可，两种模型格式统一。
     pickText: (data: string) => {
       if (data === '[DONE]') return ''
       try { return JSON.parse(data).choices?.[0]?.delta?.content ?? '' } catch { return '' }
     },
-  })
-
-  abortFn = abort   // 保存 abort 函数，用于停止按钮调用
-
-  sub = text$.subscribe({
-    next(value) {
-      // value 是打字机逐步输出的"累计完整文本"，直接覆盖 content
+    onText(value) {
       const last = messages.value.at(-1)
       if (!last || last.from !== 'ai') return
-      if (!last.startTime) last.startTime = Date.now()   // 记录首 token 到达时间
+      if (!last.startTime) last.startTime = Date.now()
       last.loading = false
-      last.status = undefined   // 清除 RECONNECTING 状态
+      last.status = undefined
       last.content = value
       scrollToBottom()
     },
-    error(err) {
+    onError(err: any) {
       streaming.value = false
       const last = messages.value.at(-1)
       if (last?.from === 'ai') {
@@ -582,17 +548,19 @@ function handleSubmit(val?: string) {
         last.status = 'ERROR'
       }
     },
-    complete() {
+    onDone() {
       streaming.value = false
       const last = messages.value.at(-1)
       if (last?.from === 'ai') {
         last.loading = false
         last.status = 'DONE'
-        last.endTime = Date.now()   // 记录流结束时间，用于计算推理耗时
+        last.endTime = Date.now()
       }
       scrollToBottom()
     },
   })
+
+  abortFn = abort
 }
 </script>
 
