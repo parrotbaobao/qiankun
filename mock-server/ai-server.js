@@ -191,6 +191,8 @@ app.post('/v1/chat/completions', async (req, res) => {
         // 只转发显式传入的采样参数（LM Studio 兼容 top_k 等非标准字段）
         const params = {
             model, messages, stream: true,
+            // 让上游在末帧回传 token 用量，供前端可观测性面板统计
+            stream_options: { include_usage: true },
             temperature: temperature ?? 0.7,
             max_tokens: max_tokens ?? 8192,
         }
@@ -211,6 +213,61 @@ app.post('/v1/chat/completions', async (req, res) => {
         res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`)
         res.end()
     }
+})
+
+// ── POST /v1/chat/completions/demo（离线样例流）───────────────────────────────
+// 上游模型不可达时用于演示 / 验证可观测性面板：
+// 逐字节流式吐出内容，并在末帧回传真实结构的 usage + finish_reason。
+app.post('/v1/chat/completions/demo', async (req, res) => {
+    const { messages = [], model = 'demo/offline' } = req.body
+    sseSetup(res)
+
+    const userText = [...messages].reverse().find(m => m.role === 'user')?.content ?? ''
+    const reply =
+        `这是一段**离线样例回复**，用于演示可观测性面板。\n\n` +
+        `你刚才说：「${userText.slice(0, 40)}」。\n\n` +
+        `真实模型接入后，TTFT / tokens_per_s / finish_reason / usage 会来自上游末帧。`
+
+    const id = 'chatcmpl-demo-' + Date.now()
+    const created = Math.floor(Date.now() / 1000)
+    const base = { id, object: 'chat.completion.chunk', created, model }
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms))
+
+    // 首字前的“思考”延迟，便于观察 TTFT
+    await sleep(350)
+
+    // 按词切片吐出，制造流式节奏
+    const pieces = reply.match(/[\s\S]{1,6}/g) ?? [reply]
+    for (const piece of pieces) {
+        res.write(`data: ${JSON.stringify({
+            ...base,
+            choices: [{ index: 0, delta: { content: piece }, finish_reason: null }],
+        })}\n\n`)
+        await sleep(45)
+    }
+
+    // 结束帧：带 finish_reason
+    res.write(`data: ${JSON.stringify({
+        ...base,
+        choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+    })}\n\n`)
+
+    // 用量帧：模拟 stream_options.include_usage 的末帧
+    const promptTokens = messages.reduce((n, m) => n + Math.ceil((m.content || '').length / 3), 0) || 24
+    const completionTokens = Math.ceil(reply.length / 2)
+    res.write(`data: ${JSON.stringify({
+        ...base,
+        choices: [],
+        usage: {
+            prompt_tokens: promptTokens,
+            completion_tokens: completionTokens,
+            total_tokens: promptTokens + completionTokens,
+        },
+    })}\n\n`)
+
+    res.write('data: [DONE]\n\n')
+    res.end()
 })
 
 // ── POST /api/chat ────────────────────────────────────────────────────────────

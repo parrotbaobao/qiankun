@@ -7,6 +7,32 @@ import { createStateMachine, type ChatState, type ChatStateOf } from './state-ma
 
 export type { ChatState, ChatStateOf } from './state-machine'
 
+/** OpenAI 兼容流的 usage 字段（末帧，需 stream_options.include_usage） */
+export interface ChatUsage {
+  prompt_tokens?: number
+  completion_tokens?: number
+  total_tokens?: number
+}
+
+/** 单次生成的可观测性指标，挂在 AI 消息上供面板展示 */
+export interface ChatMetrics {
+  /** 首字延迟：请求发出 → 第一个内容 token 到达（ms） */
+  ttftMs?: number
+  /** 总耗时：请求发出 → 流结束（ms） */
+  totalMs?: number
+  /** 生成速度（tokens/s），基于生成阶段（总耗时 - TTFT） */
+  tokensPerSec?: number
+  /** 是否为估算值（上游未回传 usage 时按字符估算 token） */
+  estimated?: boolean
+  usage?: ChatUsage
+  /** 结束原因：stop / length / content_filter / … */
+  finishReason?: string
+  /** 原始请求体（pretty JSON） */
+  rawRequest?: string
+  /** 原始响应：拼接的 SSE data 帧 */
+  rawResponse?: string
+}
+
 export interface ChatStreamOptions {
   url?: string
   headers?: Record<string, string>
@@ -17,6 +43,8 @@ export interface ChatStreamOptions {
   maxRetries?: number
   /** 重连即将开始时回调 */
   onReconnecting?: (attempt: number) => void
+  /** 每收到一帧原始 data 时回调（含耗时），供可观测性统计 */
+  onFrame?: (data: string, elapsedMs: number) => void
 
   // ── 事件回调 ──
   /** 每次刷新输出累计文本（取代旧的 text$.next） */
@@ -68,6 +96,7 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
     },
     {
       onChunk: (text) => typewriter.enqueue(text),
+      onFrame: options.onFrame,
       onClose: () => {
         sm.send({ type: 'streamClosed' })
         typewriter.markStreamClosed()

@@ -38,6 +38,7 @@ watch(prompt, (p) => {
 // 旧的 /api/chat 是面试专用接口（收 { message, history }），格式不兼容，故不再作为选项。
 const APIS = [
   { value: 'http://localhost:3200/v1/chat/completions', label: '对话补全 (OpenAI 兼容)' },
+  { value: 'http://localhost:3200/v1/chat/completions/demo', label: '本地样例流 (离线演示)' },
 ]
 const selectedApi = ref('http://localhost:3200/v1/chat/completions')
 

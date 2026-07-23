@@ -19,6 +19,11 @@ export interface SseSourceHandlers {
   onError: (err: unknown) => void
   /** 准备进行第 attempt 次重连时回调（attempt 从 1 开始） */
   onRetry?: (attempt: number) => void
+  /**
+   * 每收到一帧原始 data（不含 [DONE]）时回调，附带自请求发出起的耗时（ms）。
+   * 供可观测性面板统计 TTFT / usage / finish_reason / 原始响应，pickText 之外的旁路。
+   */
+  onFrame?: (data: string, elapsedMs: number) => void
 }
 
 export interface SseSource {
@@ -29,6 +34,7 @@ export function createSseSource(opts: SseSourceOptions, handlers: SseSourceHandl
   const { url, headers, body, pickText = (s) => s, maxRetries = 0 } = opts
   const ctrl = new AbortController()
   let retryCount = 0
+  const startedAt = performance.now()
 
   const bodyStr =
     body == null ? undefined : typeof body === 'string' ? body : JSON.stringify(body)
@@ -46,6 +52,7 @@ export function createSseSource(opts: SseSourceOptions, handlers: SseSourceHandl
       try {
         const data = ev?.data
         if (!data || data === '[DONE]') return
+        handlers.onFrame?.(data, performance.now() - startedAt)
         const text = pickText(data)
         if (text) handlers.onChunk(text)
       } catch (e) {

@@ -51,6 +51,30 @@
                             </button>
                         </div>
                     </div>
+
+                    <!-- 可观测性指标条 -->
+                    <div v-if="item.metrics" class="metrics-bar">
+                        <span v-if="item.metrics.ttftMs != null" class="metric-chip" title="首字延迟 (Time To First Token)">
+                            <span class="metric-ico">⚡</span>TTFT {{ fmtMs(item.metrics.ttftMs) }}
+                        </span>
+                        <span v-if="tokenLabel(item.metrics)" class="metric-chip"
+                            :title="tokenTitle(item.metrics)">
+                            <span class="metric-ico">🔢</span>{{ tokenLabel(item.metrics) }}
+                        </span>
+                        <span v-if="item.metrics.tokensPerSec != null" class="metric-chip" title="生成速度（生成阶段 tokens/秒）">
+                            <span class="metric-ico">🚀</span>{{ item.metrics.tokensPerSec.toFixed(1) }} tok/s
+                        </span>
+                        <span v-if="item.metrics.totalMs != null" class="metric-chip" title="总耗时">
+                            <span class="metric-ico">⏱</span>{{ fmtMs(item.metrics.totalMs) }}
+                        </span>
+                        <span v-if="item.metrics.finishReason" class="metric-chip metric-chip--finish"
+                            :data-reason="item.metrics.finishReason" title="结束原因 (finish_reason)">
+                            <span class="metric-ico">🏁</span>{{ item.metrics.finishReason }}
+                        </span>
+                        <button class="metric-raw" title="查看原始请求 / 响应" @click="emit('view-raw')">
+                            &lt;/&gt; 原始
+                        </button>
+                    </div>
                     <!-- 点踩弹窗 -->
                     <div v-if="dislikeOpen" class="dislike-popup">
                         <p class="dislike-title">请告诉我们哪里不对</p>
@@ -81,6 +105,7 @@ import IconStopRect from '@/components/icons/IconStopRect.vue'
 import IconCopy from '@/components/icons/IconCopy.vue'
 import IconThumbUp from '@/components/icons/IconThumbUp.vue'
 import IconThumbDown from '@/components/icons/IconThumbDown.vue'
+import type { ChatMetrics } from '@/services/chat.service'
 
 export interface ChatMessage {
     id: string
@@ -89,6 +114,27 @@ export interface ChatMessage {
     createdAt: number
     loading?: boolean
     status?: string
+    metrics?: ChatMetrics
+}
+
+function fmtMs(ms: number): string {
+    if (ms < 1000) return `${Math.round(ms)} ms`
+    return `${(ms / 1000).toFixed(2)} s`
+}
+
+function tokenLabel(m: ChatMetrics): string {
+    const u = m.usage
+    if (u?.completion_tokens == null) return ''
+    const prefix = m.estimated ? '~' : ''
+    const prompt = !m.estimated && u.prompt_tokens != null ? `${u.prompt_tokens}→` : ''
+    return `${prefix}${prompt}${u.completion_tokens} tok`
+}
+
+function tokenTitle(m: ChatMetrics): string {
+    const u = m.usage
+    if (!u) return 'Token 用量'
+    if (m.estimated) return `按字符估算的输出 token（上游未回传 usage）`
+    return `输入 ${u.prompt_tokens ?? '—'} · 输出 ${u.completion_tokens ?? '—'} · 合计 ${u.total_tokens ?? '—'}`
 }
 
 const props = defineProps<{
@@ -109,6 +155,7 @@ const emit = defineEmits<{
     (e: 'submit-dislike'): void
     (e: 'cancel-dislike'): void
     (e: 'regenerate'): void
+    (e: 'view-raw'): void
 }>()
 
 const DISLIKE_TAGS = ['不准确', '答非所问', '内容有害', '回答太长', '回答太短', '其他']
@@ -203,6 +250,73 @@ const DISLIKE_TAGS = ['不准确', '答非所问', '内容有害', '回答太长
     align-items: center;
     gap: 2px;
     transition: opacity 0.15s;
+}
+
+/* ── 可观测性指标条 ── */
+.metrics-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.metric-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: #64748b;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    cursor: default;
+}
+
+.metric-ico {
+    font-size: 11px;
+    line-height: 1;
+}
+
+.metric-chip--finish {
+    color: #047857;
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+}
+
+.metric-chip--finish[data-reason="length"] {
+    color: #b45309;
+    background: #fffbeb;
+    border-color: #fde68a;
+}
+
+.metric-chip--finish[data-reason="content_filter"] {
+    color: #b91c1c;
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.metric-raw {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    color: #7c3aed;
+    background: transparent;
+    border: 1px solid #ddd6fe;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.metric-raw:hover {
+    background: #f3f0ff;
+    border-color: #a78bfa;
 }
 
 .act-btn {

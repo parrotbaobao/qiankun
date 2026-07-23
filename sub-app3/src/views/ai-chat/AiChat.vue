@@ -20,14 +20,14 @@
             key-field="id" @scroll.passive="onScroll">
             <template #default="{ item, active }">
                 <DynamicScrollerItem :item="item" :active="active"
-                    :size-dependencies="[item.content, item.loading, dislikePopup.messageId === item.id]">
+                    :size-dependencies="[item.content, item.loading, !!item.metrics, dislikePopup.messageId === item.id]">
                     <ChatMessageItem :item="item" :feedback-type="feedbackMap[item.id]"
                         :is-copied="copiedId === item.id" :dislike-open="dislikePopup.messageId === item.id"
                         :dislike-selected-tags="dislikePopup.selectedTags" :dislike-comment="dislikePopup.comment"
                         @copy="copyMessage(item)" @like="toggleLike(item)" @dislike-open="openDislike(item)"
                         @toggle-tag="toggleTag" @update:dislike-comment="v => dislikePopup.comment = v"
                         @submit-dislike="submitDislike(item)" @cancel-dislike="closeDislike"
-                        @regenerate="regenerate(item)" />
+                        @regenerate="regenerate(item)" @view-raw="openRawViewer(item)" />
                 </DynamicScrollerItem>
             </template>
         </DynamicScroller>
@@ -50,6 +50,36 @@
             <p class="input-hint">Enter 发送 · Shift+Enter 换行</p>
         </div>
 
+        <!-- ── 原始请求/响应查看器 ── -->
+        <div v-if="rawViewer" class="raw-overlay" @click.self="closeRawViewer">
+            <div class="raw-modal">
+                <div class="raw-header">
+                    <span class="raw-title">原始请求 / 响应</span>
+                    <div class="raw-summary">
+                        <span v-if="rawViewer.usage?.total_tokens != null">合计 {{ rawViewer.usage.total_tokens }} tok</span>
+                        <span v-if="rawViewer.finishReason">finish: {{ rawViewer.finishReason }}</span>
+                    </div>
+                    <button class="raw-close" @click="closeRawViewer">✕</button>
+                </div>
+                <div class="raw-body">
+                    <section class="raw-section">
+                        <div class="raw-section-head">
+                            <span>REQUEST</span>
+                            <button class="raw-copy" @click="copyRaw(rawViewer.rawRequest)">复制</button>
+                        </div>
+                        <pre class="raw-pre">{{ rawViewer.rawRequest }}</pre>
+                    </section>
+                    <section class="raw-section">
+                        <div class="raw-section-head">
+                            <span>RESPONSE（SSE 帧）</span>
+                            <button class="raw-copy" @click="copyRaw(rawViewer.rawResponse)">复制</button>
+                        </div>
+                        <pre class="raw-pre">{{ rawViewer.rawResponse }}</pre>
+                    </section>
+                </div>
+            </div>
+        </div>
+
     </div>
 </template>
 
@@ -60,7 +90,7 @@ import IconChat from '@/components/icons/IconChat.vue'
 import IconStopSquare from '@/components/icons/IconStopSquare.vue'
 import IconSend from '@/components/icons/IconSend.vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import { createChatStream, type ChatState } from '@/services/chat.service'
+import { createChatStream, type ChatState, type ChatMetrics, type ChatUsage } from '@/services/chat.service'
 import ChatMessageItem from './ChatMessageItem.vue'
 import type { ChatMessage as Message } from './ChatMessageItem.vue'
 import { ConversationService } from '../../services/conversation.service'
@@ -103,6 +133,64 @@ const dislikePopup = reactive<{ messageId: string | null; selectedTags: string[]
 // ── data ──────────────────────────────────────────────────────────────────────
 const messages = reactive<Message[]>([])
 const streamingMessage = ref<Message | null>(null)
+
+// ── 可观测性：本次生成的指标累加器 ────────────────────────────────────────────
+interface MetricsAcc {
+    perfStart: number
+    ttftMs?: number
+    finishReason?: string
+    usage?: ChatUsage
+    frames: string[]
+    rawRequest: string
+    /** 上游在流内返回的错误（如 {"error":"Request timed out."}） */
+    errorMsg?: string
+}
+let metricsAcc: MetricsAcc | null = null
+
+// 原始请求/响应查看器
+const rawViewer = ref<ChatMetrics | null>(null)
+function openRawViewer(item: Message) {
+    if (item.metrics) rawViewer.value = item.metrics
+}
+function closeRawViewer() { rawViewer.value = null }
+function copyRaw(text?: string) { if (text) navigator.clipboard.writeText(text).catch(() => {}) }
+
+// 上游未回传 usage 时，按字符粗略估算输出 token（CJK≈1，其余≈1/4）
+function estimateTokens(text: string): number {
+    let cjk = 0, other = 0
+    for (const ch of text) {
+        if (/[一-鿿぀-ヿ가-힯]/.test(ch)) cjk++
+        else other++
+    }
+    return Math.max(1, Math.round(cjk + other / 4))
+}
+
+// 收尾：把累加器折算成挂到消息上的 ChatMetrics
+function buildMetrics(content: string): ChatMetrics {
+    const acc = metricsAcc!
+    const totalMs = performance.now() - acc.perfStart
+    const genMs = acc.ttftMs != null ? Math.max(1, totalMs - acc.ttftMs) : Math.max(1, totalMs)
+
+    let usage = acc.usage
+    let estimated = false
+    if (usage?.completion_tokens == null && content) {
+        usage = { completion_tokens: estimateTokens(content) }
+        estimated = true
+    }
+    const completion = usage?.completion_tokens
+    const tokensPerSec = completion != null ? completion / (genMs / 1000) : undefined
+
+    return {
+        ttftMs: acc.ttftMs,
+        totalMs,
+        tokensPerSec,
+        estimated,
+        usage,
+        finishReason: acc.finishReason,
+        rawRequest: acc.rawRequest,
+        rawResponse: acc.frames.join('\n\n') || '（无响应帧）',
+    }
+}
 
 const displayMessages = computed<Message[]>(() =>
     streamingMessage.value ? [...messages, streamingMessage.value] : [...messages]
@@ -183,9 +271,14 @@ function stop() {
     streaming.value = false
     if (streamingMessage.value) {
         streamingMessage.value.status = 'STOPPED'
+        if (metricsAcc) {
+            if (!metricsAcc.finishReason) metricsAcc.finishReason = 'aborted'
+            streamingMessage.value.metrics = buildMetrics(streamingMessage.value.content)
+        }
         messages.push(streamingMessage.value)
         streamingMessage.value = null
     }
+    metricsAcc = null
 }
 
 // ── 加载历史对话 ──────────────────────────────────────────────────────────────
@@ -246,11 +339,43 @@ function sendToAI(text: string) {
     if (props.stop?.length) body.stop = props.stop
     if (props.seed != null) body.seed = props.seed
 
+    // 初始化本次生成的指标累加器
+    metricsAcc = {
+        perfStart: performance.now(),
+        frames: [],
+        rawRequest: JSON.stringify(body, null, 2),
+    }
+
     const token = localStorage.getItem('auth_token') ?? ''
     const { abort } = createChatStream({
         url: props.url ?? CHAT_STREAM_URL,
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         maxRetries: 3,
+        onFrame(data, elapsedMs) {
+            if (!metricsAcc) return
+            metricsAcc.frames.push(data)
+            try {
+                const obj = JSON.parse(data)
+                // 上游在 200 流里塞的错误帧（超时/上游不可达等），单独记下以便呈现为错误
+                if (obj?.error != null) {
+                    metricsAcc.errorMsg = typeof obj.error === 'string' ? obj.error : (obj.error.message ?? '上游返回错误')
+                }
+                const choice = obj?.choices?.[0]
+                if (choice?.finish_reason != null) metricsAcc.finishReason = choice.finish_reason
+                if (obj?.usage) {
+                    metricsAcc.usage = {
+                        prompt_tokens: obj.usage.prompt_tokens,
+                        completion_tokens: obj.usage.completion_tokens,
+                        total_tokens: obj.usage.total_tokens,
+                    }
+                }
+                // TTFT：首个带内容（正文或推理）的增量帧到达时刻
+                if (metricsAcc.ttftMs == null) {
+                    const d = choice?.delta ?? {}
+                    if (d.content || d.reasoning_content) metricsAcc.ttftMs = elapsedMs
+                }
+            } catch { /* 非 JSON 帧（如 error），仅保留在 frames 中 */ }
+        },
         onReconnecting(attempt) {
             reconnectAttempt.value = attempt
             if (!streamingMessage.value) return
@@ -283,16 +408,28 @@ function sendToAI(text: string) {
                 streamingMessage.value.loading = false
                 streamingMessage.value.content = `⚠️ ${err?.message ?? '请求失败'}`
                 streamingMessage.value.status = 'ERROR'
+                if (metricsAcc) streamingMessage.value.metrics = buildMetrics('')
                 messages.push(streamingMessage.value)
                 streamingMessage.value = null
             }
+            metricsAcc = null
             emit('conversation-updated')
         },
         onDone() {
             streaming.value = false
             if (streamingMessage.value) {
-                const aiContent = streamingMessage.value.content
-                streamingMessage.value.status = 'DONE'
+                let aiContent = streamingMessage.value.content
+                streamingMessage.value.loading = false
+                // 流正常关闭，但上游其实塞了错误帧且没有正文 → 呈现为错误而非空白“已完成”
+                const errMsg = metricsAcc?.errorMsg
+                if (errMsg && !aiContent) {
+                    streamingMessage.value.content = `⚠️ ${errMsg}`
+                    streamingMessage.value.status = 'ERROR'
+                    aiContent = ''
+                } else {
+                    streamingMessage.value.status = 'DONE'
+                }
+                if (metricsAcc) streamingMessage.value.metrics = buildMetrics(aiContent)
                 messages.push(streamingMessage.value)
                 streamingMessage.value = null
                 if (props.conversationId && aiContent) {
@@ -300,6 +437,7 @@ function sendToAI(text: string) {
                         .catch(err => console.warn('[appendMessages]', err))
                 }
             }
+            metricsAcc = null
             if (!document.hidden) scrollToBottom()
             emit('conversation-updated')
         },
@@ -586,4 +724,121 @@ onBeforeUnmount(() => { abortFn?.() })
 .chat-phase-pill[data-phase="streaming"]    { background:#ecfdf5; color:#047857; border-color:#a7f3d0; }
 .chat-phase-pill[data-phase="error"]        { background:#fef2f2; color:#b91c1c; border-color:#fecaca; }
 .chat-phase-pill[data-phase="aborted"]      { background:#f3f4f6; color:#4b5563; border-color:#e5e7eb; }
+
+/* ── 原始请求/响应查看器 ── */
+.raw-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 300;
+    padding: 24px;
+}
+
+.raw-modal {
+    background: #fff;
+    border-radius: 14px;
+    width: 760px;
+    max-width: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 16px 56px rgba(0, 0, 0, 0.25);
+}
+
+.raw-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #eef0f2;
+    flex-shrink: 0;
+}
+
+.raw-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #18181b;
+}
+
+.raw-summary {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: #64748b;
+}
+
+.raw-summary span {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 2px 8px;
+}
+
+.raw-close {
+    border: none;
+    background: transparent;
+    font-size: 16px;
+    color: #9ca3af;
+    cursor: pointer;
+    border-radius: 6px;
+    padding: 2px 8px;
+    line-height: 1;
+}
+
+.raw-close:hover { background: #f3f4f6; color: #374151; }
+
+.raw-body {
+    overflow-y: auto;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.raw-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #9ca3af;
+}
+
+.raw-copy {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0;
+    color: #7c3aed;
+    background: transparent;
+    border: 1px solid #ddd6fe;
+    border-radius: 6px;
+    padding: 2px 8px;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.raw-copy:hover { background: #f3f0ff; border-color: #a78bfa; }
+
+.raw-pre {
+    margin: 0;
+    padding: 12px 14px;
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 10px;
+    font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 320px;
+    overflow-y: auto;
+}
 </style>

@@ -5,4 +5,6 @@ export {
   type ChatStream,
   type ChatState,
   type ChatStateOf,
+  type ChatMetrics,
+  type ChatUsage,
 } from './chat'
