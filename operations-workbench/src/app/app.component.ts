@@ -1,0 +1,66 @@
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
+import { Subscription } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs/operators';
+import { abc } from '@mfe-demo/shared-utils';
+import { MfeStateService } from './core/services/mfe-state.service';
+import { Router } from '@angular/router';
+
+@Component({
+  selector: 'sub-root',
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.scss'],
+})
+export class AppComponent implements OnInit, OnDestroy {
+  title = 'operations-workbench';
+  currentLang: string = 'zh';
+  probeDialogOpen = false;
+
+  private _sub = new Subscription();
+
+  constructor(
+    private translate: TranslateService,
+    private mfeState: MfeStateService,
+    private router: Router,
+  ) {
+    this.translate.setDefaultLang('zh');
+    this.translate.addLangs(['zh', 'en']);
+
+    const savedLang = localStorage.getItem('lang');
+    this.currentLang = savedLang || 'zh';
+    this.translate.use(this.currentLang);
+  }
+
+  ngOnInit(): void {
+    // 🔥 模拟：子应用 mount 时不小心动了主应用注入到 <head> 的全局 style
+    const evil = document.getElementById('runtime-injected-style');
+    console.warn('[sub-app1] mount，找到 runtime-injected-style 吗？', !!evil);
+    if (evil) {
+      evil.remove();
+      console.warn('[sub-app1] 已经从 <head> 删除了 runtime-injected-style');
+    }
+
+    this._sub.add(
+      this.mfeState.context$.pipe(
+        map((ctx) => ctx.language),
+        distinctUntilChanged(),
+      ).subscribe((lang) => {
+        if (lang && lang !== this.currentLang) {
+          this.currentLang = lang;
+          localStorage.setItem('lang', lang);
+          this.translate.use(lang);
+        }
+      }),
+    );
+  }
+
+  changeLang(lang: string): void {
+    this.currentLang = lang;
+    localStorage.setItem('lang', lang);
+    this.translate.use(lang);
+  }
+
+  ngOnDestroy(): void {
+    this._sub.unsubscribe();
+  }
+}

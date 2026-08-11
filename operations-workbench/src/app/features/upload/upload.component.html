@@ -1,0 +1,45 @@
+<div class="upload-page">
+  <div class="upload-inner">
+    <header class="upload-header">
+      <h1 class="upload-title">{{ 'ad.pageTitle' | translate }}</h1>
+      <p class="upload-subtitle">支持多文件上传，实时进度反馈</p>
+    </header>
+
+    <div class="upload-zone">
+      <label class="upload-drop-area" for="file-input">
+        <div class="upload-icon">
+          <app-icon-upload [size]="32" ></app-icon-upload>
+        </div>
+        <span class="upload-drop-text">拖拽文件到此处或 <em>点击选择</em></span>
+        <span class="upload-drop-hint">支持多文件同时上传</span>
+        <input id="file-input" class="upload-file-input" multiple type="file" (change)="onChange($event)">
+      </label>
+    </div>
+
+    <div class="progress-area" *ngIf="progress">
+      <div class="progress-header">
+        <span class="progress-label">{{ 'ad.uploadProgress' | translate }}</span>
+        <span class="progress-pct">{{ progress }}%</span>
+      </div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" [style.width.%]="progress"></div>
+      </div>
+      <button class="btn btn-danger btn-sm cancel-btn" type="button" (click)="cancel()" [disabled]="!uploadSub">
+        {{ 'ad.cancelButton' | translate }}
+      </button>
+    </div>
+
+    <div class="list-panel">
+      <div class="panel-header">
+        <span class="panel-title">文件列表</span>
+        <span class="panel-badge">虚拟滚动 · 万级数据</span>
+      </div>
+      <div id="app" class="list-container">
+        <div class="viewport" id="viewport">
+          <div class="phantom" id="phantom"></div>
+          <div class="list" id="list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

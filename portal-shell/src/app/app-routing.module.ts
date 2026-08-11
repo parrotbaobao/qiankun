@@ -1,0 +1,45 @@
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes, UrlMatcher } from '@angular/router';
+import { MicroAppContainerComponent } from './micro-app-container.component';
+
+
+const MICRO_APPS = ['operations-workbench', 'error-center', 'ai-workspace'];
+
+const microAppMatcher: UrlMatcher = (segments) => {
+  const first = segments[0]?.path;
+  return first && MICRO_APPS.includes(first) ? { consumed: segments } : null;
+};
+
+// routes 里就一条
+const routes: Routes = [
+  { matcher: microAppMatcher, component: MicroAppContainerComponent },
+  {
+    path: 'home',
+    loadChildren: () =>
+      import('./features/home/home.module').then((m) => m.HomeModule),
+  },
+  {
+    path: 'cloud-advisor',
+    loadChildren: () =>
+      import('./features/cloud-advisor/cloud-advisor.module').then((m) => m.CloudAdvisorModule),
+  },
+  {
+    path: 'devui',
+    loadChildren: () =>
+      import('./features/devui-demo/devui-demo.module').then((m) => m.DevuiDemoModule),
+  },
+  {
+    path: 'form',
+    loadChildren: () =>
+      import('./features/form-submission/form-submission.module').then((m) => m.FormSubmissionModule),
+  },
+
+  { path: '', redirectTo: 'home', pathMatch: 'full' },
+  { path: '**', redirectTo: 'home' },
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule],
+})
+export class AppRoutingModule { }

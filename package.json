@@ -1,4 +1,10 @@
 {
+  "name": "microfrontend-lab",
+  "private": true,
+  "scripts": {
+    "build:libs": "npm --prefix microfrontend-state run build && npm --prefix shared-utils run build",
+    "start:all": "node scripts/start-all.js"
+  },
   "dependencies": {
     "@antv/g6": "^5.0.51",
     "bcryptjs": "^3.0.3",

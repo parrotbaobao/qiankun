@@ -1,0 +1,160 @@
+{
+  "_seq": {
+    "users": 2,
+    "conversations": 3,
+    "messages": 6,
+    "feedback": 1
+  },
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "email": "wangjg@company.com",
+      "password_hash": "$2b$10$EhVmKMIUYGDQmXJqdwXL1uy5lz5zXsez.7zWztTcOFjatwyS8eN9y",
+      "avatar_url": "https://api.dicebear.com/9.x/avataaars/svg?seed=admin&backgroundColor=b6e3f4",
+      "name": "王建国",
+      "nickname": "老王",
+      "role": "admin",
+      "phone": "138****8001",
+      "gender": "male",
+      "department": "技术部",
+      "position": "系统架构师",
+      "bio": "10年+全栈开发经验，热爱开源，专注于AI应用开发",
+      "location": "上海",
+      "website": "https://github.com/wangjg",
+      "status": "active",
+      "permissions": [
+        "user:read",
+        "user:write",
+        "user:delete",
+        "prompt:read",
+        "prompt:write",
+        "prompt:delete",
+        "system:admin"
+      ],
+      "tags": [
+        "核心成员",
+        "全栈工程师",
+        "AI爱好者"
+      ],
+      "preferences": {
+        "theme": "light",
+        "language": "zh-CN",
+        "notifications": true,
+        "compactMode": false
+      },
+      "stats": {
+        "loginCount": 317,
+        "promptCount": 87,
+        "chatCount": 1024
+      },
+      "last_login_at": "2026-07-27T08:22:20.209Z",
+      "created_at": "2026-07-21T10:05:09.709Z",
+      "updated_at": "2026-07-27T08:22:20.209Z"
+    },
+    {
+      "id": 2,
+      "username": "user",
+      "email": "lixm@company.com",
+      "password_hash": "$2b$10$x.tTbFG.ZHDr6NIKGX98Qe4ZFwsL0v0d8EjW1Srh./am/xkzyshiK",
+      "avatar_url": "https://api.dicebear.com/9.x/avataaars/svg?seed=user&backgroundColor=ffdfbf",
+      "name": "李晓明",
+      "nickname": "小李",
+      "role": "user",
+      "phone": "136****6688",
+      "gender": "male",
+      "department": "产品部",
+      "position": "产品经理",
+      "bio": "专注于AI产品设计，热衷于探索新技术与用户体验",
+      "location": "北京",
+      "website": null,
+      "status": "active",
+      "permissions": [
+        "prompt:read",
+        "prompt:write",
+        "user:read"
+      ],
+      "tags": [
+        "产品经理",
+        "AI探索者"
+      ],
+      "preferences": {
+        "theme": "light",
+        "language": "zh-CN",
+        "notifications": true,
+        "compactMode": true
+      },
+      "stats": {
+        "loginCount": 53,
+        "promptCount": 12,
+        "chatCount": 89
+      },
+      "last_login_at": "2026-08-11T09:51:55.446Z",
+      "created_at": "2026-07-21T10:05:09.778Z",
+      "updated_at": "2026-08-11T09:51:55.446Z"
+    }
+  ],
+  "conversations": [
+    {
+      "id": 2,
+      "user_id": 1,
+      "title": "### 函数名与功能不符",
+      "model": "google/gemma-3-4b",
+      "system_prompt": null,
+      "is_pinned": false,
+      "is_archived": false,
+      "created_at": "2026-07-27T08:23:15.136Z",
+      "updated_at": "2026-07-27T08:25:01.469Z"
+    },
+    {
+      "id": 3,
+      "user_id": 1,
+      "title": "Python 快速排序函数",
+      "model": "google/gemma-3-4b",
+      "system_prompt": null,
+      "is_pinned": false,
+      "is_archived": false,
+      "created_at": "2026-07-27T08:26:12.340Z",
+      "updated_at": "2026-07-27T08:28:05.798Z"
+    }
+  ],
+  "messages": [
+    {
+      "id": 3,
+      "conversation_id": "2",
+      "role": "user",
+      "content": "帮我审查这段代码：function add(a,b){return a-b}",
+      "tokens": 0,
+      "metadata": null,
+      "created_at": "2026-07-27T08:24:59.110Z"
+    },
+    {
+      "id": 4,
+      "conversation_id": "2",
+      "role": "assistant",
+      "content": "<think>\n我们有一个函数名为add，但实际上它执行的是减法操作（a - b）。这显然与函数名不符。\n 潜在问题：\n 1. 函数命名误导了使用者的期望。使用者可能认为这个函数会做加法，但实际是减法。\n 2. 如果代码中其他地方调用了add(a, b)并期望得到和，那么结果将大相径庭。\n\n 安全漏洞：从功能上看，这个简单的算术运算没有明显的安全问题。\n\n 性能瓶颈：这是一个非常简单的函数，计算两个数字的差。由于只是减法操作，并且假设a和b是数字类型（或可以转为数字），所以性能上几乎没有问题。\n\n 改进建议：\n 1. 将函数名改为subtract。\n 2. 如果确实需要add函数，则实现加法功能：return a + b\n\n 另外，考虑到代码的清晰性，我们还可以考虑添加注释说明这个函数的作用。但是既然用户要求审查，并且给出了一个明显错误的功能，那么修正函数名或功能是首要任务。\n\n 因此，我建议修改为：\n - 函数名为subtract，并实现减法。\n 或者\n - 函数名为add，并实现加法（return a + b）\n\n 由于问题中只提供了一段代码，没有上下文，我们无法确定调用这个函数的具体用途。但是根据常见的编码规范和实践，函数名应该反映其功能。\n\n 如果这是一个公共API的一部分，那么错误的命名可能会导致其他开发者误用，并在后续出现难以追踪的问题。\n</think>\n### 代码审查报告\n\n#### 潜在问题：\n1. **函数名与实现不匹配**：  \n   函数名为`add()`（意为“相加”），但实际执行的是减法操作（`a - b`）。这会导致用户对函数行为产生误解，可能引发逻辑错误。\n   \n2. **缺少类型检查和异常处理**：  \n   如果传入的参数不是数字类型，该函数会返回意外结果或导致后续代码出错。例如：\n   ```javascript\n   add(5, \"10\"); // 返回 -5 或 NaN，取决于 JavaScript 引擎（实际为 5 - \"10\" = -5）\n   ```\n   \n3. **缺少边界条件处理**：  \n   当`b`大于`a`时，结果可能不符合预期。虽然这不是安全问题，",
+      "tokens": 0,
+      "metadata": null,
+      "created_at": "2026-07-27T08:24:59.112Z"
+    },
+    {
+      "id": 5,
+      "conversation_id": "3",
+      "role": "user",
+      "content": "用 Python 写一个快速排序函数",
+      "tokens": 0,
+      "metadata": null,
+      "created_at": "2026-07-27T08:28:02.051Z"
+    },
+    {
+      "id": 6,
+      "conversation_id": "3",
+      "role": "assistant",
+      "content": "这是一段**离线样例回复**，用于演示可观测性面板。\n\n你刚才说：「用 Python 写一个快速排序函数」。\n\n真实模型接入后，TTFT / tokens_per_s / finish_reason / usage 会来自上游末帧。",
+      "tokens": 0,
+      "metadata": null,
+      "created_at": "2026-07-27T08:28:02.051Z"
+    }
+  ],
+  "feedback": []
+}

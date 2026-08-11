@@ -5,19 +5,19 @@ echo ""
 cd "$(dirname "$0")"
 
 echo "📦 安装依赖..."
-(cd sub-app1 && npm install) &
-(cd sub-app2 && npm install) &
-(cd sub-app3 && npm install) &
-(cd main-app && npm install) &
+(cd todo-app && npm install) &
+(cd counter-app && npm install) &
+(cd user-directory-app && npm install) &
+(cd wujie-shell && npm install) &
 wait
 
 echo ""
 echo "🔥 启动所有应用..."
-(cd sub-app1 && npm run dev) &
-(cd sub-app2 && npm run dev) &
-(cd sub-app3 && npm run dev) &
+(cd todo-app && npm run dev) &
+(cd counter-app && npm run dev) &
+(cd user-directory-app && npm run dev) &
 sleep 2
-(cd main-app && npm run dev) &
+(cd wujie-shell && npm run dev) &
 
 echo ""
 echo "========================================="

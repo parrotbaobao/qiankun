@@ -1,0 +1,66 @@
+{
+  "workflows": [
+    {
+      "id": "workflow_1",
+      "name": "测试编排",
+      "nodes": [],
+      "edges": []
+    },
+    {
+      "id": "1001",
+      "name": "测试编排",
+      "nodes": [
+        {
+          "id": "node_1786440706448_cxtxva",
+          "type": "start",
+          "name": "开始",
+          "x": 0,
+          "y": 0,
+          "width": 48,
+          "height": 48,
+          "config": {}
+        },
+        {
+          "id": "node_1786440706448_y46clg",
+          "type": "api",
+          "name": "HTTP 请求",
+          "x": 0,
+          "y": 0,
+          "width": 160,
+          "height": 64,
+          "config": {
+            "method": "POST",
+            "url": "",
+            "headers": {},
+            "params": {},
+            "body": {},
+            "mockResponse": {},
+            "templateKey": "default-http"
+          }
+        },
+        {
+          "id": "node_1786440706448_64jf2m",
+          "type": "end",
+          "name": "结束",
+          "x": 0,
+          "y": 0,
+          "width": 48,
+          "height": 48,
+          "config": {}
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge_1786440706448_wyqbx3",
+          "source": "node_1786440706448_cxtxva",
+          "target": "node_1786440706448_y46clg"
+        },
+        {
+          "id": "edge_1786440706448_9pqvxs",
+          "source": "node_1786440706448_y46clg",
+          "target": "node_1786440706448_64jf2m"
+        }
+      ]
+    }
+  ]
+}
