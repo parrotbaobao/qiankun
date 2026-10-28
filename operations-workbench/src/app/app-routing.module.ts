@@ -1,7 +1,5 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { HomeComponent } from './features/home/home.component';
-import { AiChatComponent } from './features/ai-chat/ai-chat.component';
 import { UserTableComponent } from './features/user-table/user-table.component';
 
 const routes: Routes = [
@@ -9,7 +7,6 @@ const routes: Routes = [
     path: 'upload',
     loadChildren: () => import('./features/upload/upload.module').then((m) => m.UploadModule),
   },
-  { path: 'ai', component: AiChatComponent },
   { path: 'user-table', component: UserTableComponent },
   {
     path: 'polling-demo',
@@ -24,8 +21,9 @@ const routes: Routes = [
     path: 'charts',
     loadChildren: () => import('./features/charts/charts.module').then((m) => m.ChartsModule),
   },
-  { path: '', component: HomeComponent, pathMatch: 'full' },
-  { path: '**', component: HomeComponent },];
+  { path: '', redirectTo: 'user-table', pathMatch: 'full' },
+  { path: '**', redirectTo: 'user-table' },
+];
 
 @NgModule({
   imports: [RouterModule.forRoot(routes)],

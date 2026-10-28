@@ -17,12 +17,16 @@ body {
     width: 100%;
     height: 100%;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 /* ── 全局布局链（无法用 scoped 穿透 router-view，必须写全局）── */
 
 /* App.vue 根容器：flex 列，topbar 自然高度，page-wrap 填满剩余 */
 .app-root {
+    flex: 1;
+    min-height: 0;
     height: 100%;
     display: flex;
     flex-direction: column;

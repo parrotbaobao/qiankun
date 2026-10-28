@@ -10,21 +10,16 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { AppComponent } from './app.component';
 import { APP_BASE_HREF, CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
-import { AiChatComponent } from './features/ai-chat/ai-chat.component';
 import { OrchestrationService } from './core/services/orchestration.service';
 import { UserTableModule } from './features/user-table/user-table.module';
-import { HomeModule } from './features/home/home.module';
 import { IconHexComponent } from './shared/icons/icon-hex.component';
-import { IconAiComponent } from './shared/icons/icon-ai.component';
 import { IconTableComponent } from './shared/icons/icon-table.component';
 import { IconBarChartComponent } from './shared/icons/icon-bar-chart.component';
 import { IconUploadNavComponent } from './shared/icons/icon-upload-nav.component';
-import { IconHomeComponent } from './shared/icons/icon-home.component';
 
 @NgModule({
   declarations: [
     AppComponent,
-    AiChatComponent,
   ],
   imports: [
     BrowserModule,
@@ -34,13 +29,10 @@ import { IconHomeComponent } from './shared/icons/icon-home.component';
     FormsModule,
     ReactiveFormsModule,
     UserTableModule,
-    HomeModule,
     IconHexComponent,
-    IconAiComponent,
     IconTableComponent,
     IconBarChartComponent,
     IconUploadNavComponent,
-    IconHomeComponent,
     TranslateModule.forRoot({
       loader: {
         provide: TranslateLoader,

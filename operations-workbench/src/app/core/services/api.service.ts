@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Workflow, NodeDropPayload } from '../../shared/models/orchestration.models';
-import { TypewriterOptions, TypewriterSession } from './typewriter-session';
 
 export interface ApiResponse<T = any> {
     success: boolean;
@@ -17,10 +16,6 @@ export class WorkflowApiService {
     private baseUrl = '/api/workflows';
 
     constructor(private http: HttpClient) { }
-
-      public typewriterSse(options: TypewriterOptions): { text$: Observable<string>; abort: () => void } {
-        return new TypewriterSession(options).start();
-      }
 
     getWorkflow(id: string): Observable<ApiResponse<Workflow>> {
         return this.http.get<ApiResponse<Workflow>>(`${this.baseUrl}/${id}`);

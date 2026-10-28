@@ -1,8 +1,11 @@
 # Dependencies
+/.icloud-dependency-backups-*/
 node_modules/
+node_modules.icloud-backup-*/
 
 # Build output
 dist/
+dist.icloud-backup-*/
 build/
 out-tsc/
 bazel-out/
@@ -12,6 +15,7 @@ temp/
 
 # Framework and tool caches
 **/.angular/cache/
+**/.angular/cache.stale-*/
 **/.vite/
 **/.cache/
 **/.parcel-cache/

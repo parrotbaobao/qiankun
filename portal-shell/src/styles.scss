@@ -1,5 +1,18 @@
 /* You can add global styles to this file, and also import other style files */
 
+/* qiankun 动态包装层不受 AppComponent 的 Angular 样式封装影响，需在全局补齐容器高度链。 */
+#container > [data-name] {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#container > [data-name] > #app {
+  flex: 1;
+  min-height: 0;
+}
+
 /* ── CSS 隔离测试用：主应用全局污染样式 ─────────────────────────────────────────
    目的：验证子应用在不同沙箱模式下是否受到主应用全局样式影响。
    场景C：类名冲突 —— 子应用若存在 .conflict-btn，此样式会穿透污染它

@@ -9,7 +9,7 @@
       <button class="btn" [class.active]="isActive('/home')" (click)="goHostHome()">主应用</button>
       <button class="btn" [class.active]="currentUrl.startsWith('/operations-workbench')" (click)="goSubApp1()">子应用1
         (Angular)</button>
-      <button class="btn" (click)="goSubApp2()">子应用2</button>
+      <button class="btn" [class.active]="currentUrl.startsWith('/error-center')" (click)="goSubApp2()">子应用2</button>
       <button class="btn" [class.active]="currentUrl.startsWith('/ai-workspace')" (click)="goSubApp3()">子应用3 (Vue)</button>
       <button class="btn" [class.active]="isActive('/cloud-advisor')" (click)="goHostAd()">Cloud Advisor</button>
     </nav>
