@@ -43,7 +43,6 @@ export function createStateMachine(): StateMachine {
 
   const set = (next: ChatState) => {
     if (next.kind === state.kind && JSON.stringify(next) === JSON.stringify(state)) return
-    console.log(state, next, listeners)
     state = next
     listeners.forEach(l => l(state))
   }
@@ -81,7 +80,11 @@ export function createStateMachine(): StateMachine {
           streamClosed = true
           break
         case 'queueDrained':
-          if (streamClosed && (state.kind === 'streaming' || state.kind === 'connecting')) {
+          if (streamClosed && (
+            state.kind === 'streaming'
+            || state.kind === 'connecting'
+            || state.kind === 'reconnecting'
+          )) {
             set({ kind: 'done' })
           }
           break

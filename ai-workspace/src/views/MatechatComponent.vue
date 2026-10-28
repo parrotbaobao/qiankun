@@ -23,7 +23,8 @@
         <p class="mc-empty-title">有什么可以帮到你？</p>
         <p class="mc-empty-sub">通过 McBubble + McMarkdownCard + McInput 构建</p>
         <div class="mc-prompts">
-          <button v-for="p in quickPrompts" :key="p" class="mc-prompt-btn" @click="sendQuick(p)">
+          <button v-for="p in quickPrompts" :key="p" class="mc-prompt-btn" :disabled="isBusy"
+            @click="sendQuick(p)">
             {{ p }}
           </button>
         </div>
@@ -119,7 +120,7 @@
 
     <!-- ── 输入区 ── -->
     <div class="mc-footer">
-      <McInput :value="inputText" placeholder="发送消息…" variant="bordered" :loading="streaming" :maxLength="2000"
+      <McInput :value="inputText" placeholder="发送消息…" variant="bordered" :loading="isBusy" :maxLength="2000"
         :show-count="true" @change="(v: string) => (inputText = v)" @submit="handleSubmit" />
       <p class="mc-footer-hint">Enter 发送 · Shift+Enter 换行 · 流式输出中 Enter 可停止</p>
     </div>
@@ -156,8 +157,8 @@ import '@matechat/core/Bubble/index.css'
 import '@matechat/core/Input/index.css'
 import '@matechat/core/MarkdownCard/index.css'
 
-import { onBeforeUnmount, reactive, ref, nextTick } from 'vue'
-import { createChatStream } from '@/services/chat.service'  // 项目内封装的 SSE 流式请求工具
+import { computed, onBeforeUnmount, reactive, ref, nextTick } from 'vue'
+import { createChatStream, type ChatState } from '@/services/chat.service'  // 项目内封装的 SSE 流式请求工具
 
 // ── 类型定义 ──────────────────────────────────────────────────────────────────
 // 一条聊天消息的数据结构
@@ -187,7 +188,8 @@ const aiAvatar = { displayName: 'AI', isRound: true, width: 32, height: 32 }
 // ── 响应式状态 ────────────────────────────────────────────────────────────────
 const bodyRef = ref<HTMLElement | null>(null)    // 消息区 DOM 引用，用于滚动控制
 const inputText = ref('')                          // 输入框当前文字
-const streaming = ref(false)                       // true = 正在接收 AI 流式输出
+const roundState = ref<ChatState>({ kind: 'idle' }) // 当前一轮生成的状态机快照
+const isBusy = computed(() => ['connecting', 'streaming', 'reconnecting'].includes(roundState.value.kind))
 const messages = ref<ChatMsg[]>([])               // 全部消息列表（用户+AI交替）
 const copiedIdx = ref<number | null>(null)         // 当前"已复制"的消息索引，1.5s 后清空
 const feedbackMap = reactive<Record<number, 1 | -1>>({})  // 各消息的点赞(1)/点踩(-1)状态
@@ -196,13 +198,121 @@ const feedbackMap = reactive<Record<number, 1 | -1>>({})  // 各消息的点赞(
 // idx=-1 表示当前没有弹窗打开（-1 是哨兵值，不会与任何消息索引相同）
 const dislike = reactive({ idx: -1, tags: [] as string[], comment: '' })
 
-// ── 流式请求的句柄 ────────────────────────────────────────────────────────────
-// abortFn: 调用后会终止底层的 fetchEventSource HTTP 连接 + 清理打字机
-let abortFn: (() => void) | null = null
+// 每轮请求绑定固定 AI 消息和身份；所有回调先校验身份，旧请求迟到时直接忽略。
+interface ActiveRound {
+  id: number
+  message: ChatMsg
+  abort: (() => void) | null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function parseOpenAITextDelta(data: string): string {
+  let payload: unknown
+  try {
+    payload = JSON.parse(data)
+  } catch {
+    throw new Error('SSE 协议错误：data 不是有效 JSON')
+  }
+  if (!isRecord(payload)) throw new Error('SSE 协议错误：data 必须是 JSON 对象')
+
+  if (payload.error != null) {
+    const detail = typeof payload.error === 'string'
+      ? payload.error
+      : isRecord(payload.error) && typeof payload.error.message === 'string'
+        ? payload.error.message
+        : '上游返回错误'
+    throw new Error(detail)
+  }
+
+  // OpenAI include_usage 的末帧允许 choices=[]，它只携带统计信息，不包含正文。
+  if (Array.isArray(payload.choices) && payload.choices.length === 0 && payload.usage != null) return ''
+  if (!Array.isArray(payload.choices) || !isRecord(payload.choices[0])) {
+    throw new Error('SSE 协议错误：缺少 choices[0]')
+  }
+
+  const choice = payload.choices[0]
+  if (!isRecord(choice.delta)) {
+    if (choice.finish_reason != null) return ''
+    throw new Error('SSE 协议错误：缺少 choices[0].delta')
+  }
+
+  const content = choice.delta.content
+  if (typeof content === 'string') return content
+  if (content != null) throw new Error('SSE 协议错误：delta.content 必须是字符串')
+
+  // role、reasoning_content、工具调用和 finish_reason 是已知的非正文增量，允许忽略。
+  const knownNonTextDelta = typeof choice.delta.role === 'string'
+    || typeof choice.delta.reasoning_content === 'string'
+    || choice.delta.tool_calls != null
+    || choice.delta.function_call != null
+    || choice.finish_reason != null
+  if (knownNonTextDelta) return ''
+  throw new Error('SSE 协议错误：delta 中没有可识别的内容')
+}
+
+let nextRoundId = 0
+let activeRound: ActiveRound | null = null
+
+function isCurrentRound(round: ActiveRound) {
+  return activeRound?.id === round.id && activeRound.message === round.message
+}
+
+// 历史消息 status 只是状态机到展示模型的映射，不再由各业务回调分别决定。
+function applyStateToMessage(state: ChatState, message: ChatMsg) {
+  switch (state.kind) {
+    case 'connecting':
+      message.loading = true
+      message.status = undefined
+      break
+    case 'streaming':
+      message.loading = false
+      message.status = undefined
+      break
+    case 'reconnecting':
+      message.loading = true
+      message.status = 'RECONNECTING'
+      break
+    case 'done':
+      message.loading = false
+      message.status = 'DONE'
+      break
+    case 'error':
+      message.loading = false
+      message.status = 'ERROR'
+      break
+    case 'aborted':
+      message.loading = false
+      message.status = 'STOPPED'
+      break
+  }
+}
+
+function handleRoundState(round: ActiveRound, state: ChatState) {
+  if (!isCurrentRound(round)) return
+  roundState.value = state
+  applyStateToMessage(state, round.message)
+
+  if (state.kind === 'done' || state.kind === 'error' || state.kind === 'aborted') {
+    queueMicrotask(() => {
+      if (isCurrentRound(round)) activeRound = null
+    })
+  }
+}
+
+function cancelActiveRound({ notify = true }: { notify?: boolean } = {}) {
+  const round = activeRound
+  if (!round) return
+  if (!notify) activeRound = null
+  round.abort?.()
+  if (!notify) roundState.value = { kind: 'idle' }
+}
 
 // ── 生命周期：组件销毁时清理 ──────────────────────────────────────────────────
 onBeforeUnmount(() => {
-  abortFn?.()
+  cancelActiveRound({ notify: false })
 })
 
 // ── 滚动到底部 ────────────────────────────────────────────────────────────────
@@ -216,8 +326,8 @@ function scrollToBottom() {
 // ── 开启新对话 ────────────────────────────────────────────────────────────────
 // 先取消当前流式请求，再清空所有状态
 function newConversation() {
-  abortFn?.()
-  streaming.value = false
+  cancelActiveRound({ notify: false })
+  roundState.value = { kind: 'idle' }
   messages.value = []
   inputText.value = ''
   Object.keys(feedbackMap).forEach(k => delete feedbackMap[+k])  // 清空点赞/踩记录
@@ -227,6 +337,7 @@ function newConversation() {
 // ── 点击快捷提问按钮 ──────────────────────────────────────────────────────────
 // 先填入输入框，nextTick 后调用发送（直接 handleSubmit(text) 跳过输入框赋值也可以）
 function sendQuick(text: string) {
+  if (isBusy.value) return
   inputText.value = text
   nextTick(() => handleSubmit(text))
 }
@@ -234,7 +345,7 @@ function sendQuick(text: string) {
 // ── 重新回答（用户消息底部的"刷新"按钮）─────────────────────────────────────
 // 把这条用户消息重新发一遍（流式输出中禁止操作）
 function reAnswer(userIdx: number) {
-  if (streaming.value) return
+  if (isBusy.value) return
   const text = messages.value[userIdx]?.content
   if (!text) return
   handleSubmit(text)
@@ -243,7 +354,7 @@ function reAnswer(userIdx: number) {
 // ── 重新生成（AI 消息底部的"刷新"按钮）──────────────────────────────────────
 // 找到这条 AI 消息对应的上一条用户消息，删除 AI 消息后重新请求
 function regenerate(aiIdx: number) {
-  if (streaming.value) return
+  if (isBusy.value) return
   for (let i = aiIdx - 1; i >= 0; i--) {
     if (messages.value[i].from === 'user') {
       messages.value.splice(aiIdx)           // 删除 AI 消息（及其后面的内容）
@@ -292,13 +403,9 @@ function submitDislike(idx: number) {
 function handleSubmit(val?: string) {
   const text = (val ?? inputText.value).trim()
 
-  // ── 停止分支：streaming=true 时再次触发 = 中止请求 ──────────────────────────
-  if (streaming.value) {
-    abortFn?.()         // 关闭底层 HTTP 连接 + 清理打字机
-    abortFn = null
-    streaming.value = false
-    const last = messages.value.at(-1)
-    if (last?.from === 'ai') { last.loading = false; last.status = 'STOPPED' }
+  // ── 停止分支：忙碌时再次触发 = 中止当前轮；STOPPED 由 aborted 状态映射得出 ──
+  if (isBusy.value) {
+    cancelActiveRound()
     return
   }
 
@@ -310,9 +417,10 @@ function handleSubmit(val?: string) {
   messages.value.push({ from: 'user', content: text })
   // 2. 推入 AI 占位消息（loading=true → 显示三点动画）
   messages.value.push({ from: 'ai', content: '', loading: true })
+  const targetMessage = messages.value[messages.value.length - 1]
+  const round: ActiveRound = { id: ++nextRoundId, message: targetMessage, abort: null }
+  activeRound = round
   scrollToBottom()
-  streaming.value = true
-  abortFn?.()  // 取消上一次未完成的请求
 
   // 3. 构造发给 LLM 的历史消息（OpenAI messages 格式）
   //    过滤掉：还在 loading 中的、内容为空的、状态为 ERROR 的消息
@@ -321,16 +429,8 @@ function handleSubmit(val?: string) {
     .map(m => ({ role: m.from === 'user' ? 'user' : 'assistant', content: m.content }))
 
   // 4. 发起 SSE 流式请求（不传 url → chat.service 默认 LM Studio）
-  const { abort } = createChatStream({
+  const stream = createChatStream({
     maxRetries: 1,
-    onReconnecting(attempt) {
-      const last = messages.value.at(-1)
-      if (!last || last.from !== 'ai') return
-      last.status = 'RECONNECTING'
-      last.loading = true
-      last.content = ''
-      console.log(`[重连] 第 ${attempt} 次`)
-    },
     body: {
       model: 'deepseek/deepseek-r1-0528-qwen3-8b',
       messages: llmMessages,
@@ -339,39 +439,27 @@ function handleSubmit(val?: string) {
       max_tokens: 8192,
     },
     // OpenAI SSE 格式：data: {"choices":[{"delta":{"content":"..."}}]}
-    pickText: (data: string) => {
-      if (data === '[DONE]') return ''
-      try {
-        const obj = JSON.parse(data)
-        return obj.choices?.[0]?.delta?.content ?? ''
-      } catch { return '' }
+    pickText: parseOpenAITextDelta,
+    onStateChange(state) {
+      handleRoundState(round, state)
     },
     onText(value) {
-      const last = messages.value.at(-1)
-      if (!last || last.from !== 'ai') return
-      last.loading = false
-      last.status = undefined
-      last.content = value
+      if (!isCurrentRound(round)) return
+      targetMessage.content = value
       scrollToBottom()
     },
-    onError(err: any) {
-      streaming.value = false
-      const last = messages.value.at(-1)
-      if (last?.from === 'ai') {
-        last.loading = false
-        last.content = `⚠️ ${err?.message ?? '请求失败'}`
-        last.status = 'ERROR'
-      }
+    onError(err: unknown) {
+      if (!isCurrentRound(round)) return
+      const message = err instanceof Error ? err.message : '请求失败'
+      targetMessage.content = `⚠️ ${message}`
     },
     onDone() {
-      streaming.value = false
-      const last = messages.value.at(-1)
-      if (last?.from === 'ai') { last.loading = false; last.status = 'DONE' }
+      if (!isCurrentRound(round)) return
       scrollToBottom()
     },
   })
 
-  abortFn = abort
+  round.abort = stream.abort
 }
 </script>
 

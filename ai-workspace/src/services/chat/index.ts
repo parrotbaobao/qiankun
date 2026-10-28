@@ -70,7 +70,9 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
   const sm = createStateMachine()
   let firstChunk = true
 
-  if (options.onStateChange) sm.subscribe(options.onStateChange)
+  const unsubscribeState = options.onStateChange
+    ? sm.subscribe(options.onStateChange)
+    : null
 
   const typewriter = createTypewriter({
     onText: (full) => {
@@ -82,9 +84,15 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
     },
     onDrained: () => {
       sm.send({ type: 'queueDrained' })
+      if (sm.state.kind !== 'done') return
       options.onDone?.()
+      unsubscribeState?.()
+      typewriter.dispose()
     },
   })
+
+  // 在创建网络源之前同步通知 connecting，页面可立即阻止重复发送。
+  sm.send({ type: 'connect' })
 
   const sse = createSseSource(
     {
@@ -97,7 +105,7 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
     {
       onChunk: (text) => typewriter.enqueue(text),
       onFrame: options.onFrame,
-      onClose: () => {
+      onComplete: () => {
         sm.send({ type: 'streamClosed' })
         typewriter.markStreamClosed()
       },
@@ -105,25 +113,27 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
         // 用户主动 abort 导致的 onerror，吞掉
         if (sm.state.kind === 'aborted') return
         sm.send({ type: 'error', error: err })
+        typewriter.dispose()
         options.onError?.(err)
+        unsubscribeState?.()
       },
       onRetry: (attempt) => {
         sm.send({ type: 'retry', attempt })
-        // 重连时清队列，但保留已显示文本，避免清屏闪烁
-        typewriter.reset({ keepDisplay: true })
+        // 重试会重新发送完整 POST，不是断点续传；清空内部累计值以免新响应重复拼接。
+        // 页面已显示的内容保留到新响应首字到达，再由新的累计文本替换。
+        typewriter.reset({ keepDisplay: false })
         firstChunk = true
         options.onReconnecting?.(attempt)
       },
     },
   )
 
-  sm.send({ type: 'connect' })
-
   return {
     abort() {
       sm.send({ type: 'abort' })
       sse.abort()
       typewriter.dispose()
+      unsubscribeState?.()
     },
     get state() { return sm.state },
     on: sm.on,

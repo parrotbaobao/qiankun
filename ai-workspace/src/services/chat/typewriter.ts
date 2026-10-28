@@ -38,6 +38,7 @@ function getAdaptiveSpeed(queueLen: number): number {
 export function createTypewriter(handlers: TypewriterHandlers): Typewriter {
   let queue: string[] = []
   let display = ''
+  let lastPublished = ''
   let streamClosed = false
   let isPumping = false
   let drainedNotified = false
@@ -54,8 +55,16 @@ export function createTypewriter(handlers: TypewriterHandlers): Typewriter {
     if (rafId != null) { cancelAnimationFrame(rafId); rafId = null }
   }
 
+  const publish = () => {
+    if (display === lastPublished) return
+    lastPublished = display
+    handlers.onText(display)
+  }
+
   const maybeFinish = () => {
     if (streamClosed && queue.length === 0 && !drainedNotified) {
+      // 最后一帧可能早于 UI_FLUSH_MS；必须先发布完整文本，再通知队列耗尽。
+      publish()
       drainedNotified = true
       handlers.onDrained()
     }
@@ -84,7 +93,7 @@ export function createTypewriter(handlers: TypewriterHandlers): Typewriter {
         const p = getPause(ch)
         if (p > 0) {
           pause = p
-          handlers.onText(display)
+          publish()
           nextUiFlushTs = ts + UI_FLUSH_MS
           timerId = window.setTimeout(() => { rafId = requestAnimationFrame(frame) }, pause)
           return
@@ -92,7 +101,7 @@ export function createTypewriter(handlers: TypewriterHandlers): Typewriter {
       }
 
       if (ts >= nextUiFlushTs) {
-        handlers.onText(display)
+        publish()
         nextUiFlushTs = ts + UI_FLUSH_MS
       }
 
@@ -111,7 +120,7 @@ export function createTypewriter(handlers: TypewriterHandlers): Typewriter {
     lastFrameTs = performance.now()
     display += queue.join('')
     queue = []
-    handlers.onText(display)
+    publish()
     maybeFinish()
     if (!streamClosed && !isPumping) pump()
   }
@@ -148,7 +157,10 @@ export function createTypewriter(handlers: TypewriterHandlers): Typewriter {
       drainedNotified = false
       charBudget = 0
       lastFrameTs = performance.now()
-      if (!opts?.keepDisplay) display = ''
+      if (!opts?.keepDisplay) {
+        display = ''
+        lastPublished = ''
+      }
     },
     dispose() {
       disposed = true

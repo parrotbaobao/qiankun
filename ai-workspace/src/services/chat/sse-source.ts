@@ -3,6 +3,17 @@
 
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 
+const EVENT_STREAM_CONTENT_TYPE = 'text/event-stream'
+const RETRYABLE_HTTP_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504])
+
+class RetryableSseError extends Error {
+  override name = 'RetryableSseError'
+}
+
+class FatalSseError extends Error {
+  override name = 'FatalSseError'
+}
+
 export interface SseSourceOptions {
   url: string
   headers?: Record<string, string>
@@ -15,7 +26,8 @@ export interface SseSourceOptions {
 
 export interface SseSourceHandlers {
   onChunk: (text: string) => void
-  onClose: () => void
+  /** 收到 OpenAI 兼容协议的 [DONE] 结束帧 */
+  onComplete: () => void
   onError: (err: unknown) => void
   /** 准备进行第 attempt 次重连时回调（attempt 从 1 开始） */
   onRetry?: (attempt: number) => void
@@ -34,10 +46,18 @@ export function createSseSource(opts: SseSourceOptions, handlers: SseSourceHandl
   const { url, headers, body, pickText = (s) => s, maxRetries = 0 } = opts
   const ctrl = new AbortController()
   let retryCount = 0
+  let settled = false
+  let receivedDone = false
   const startedAt = performance.now()
 
   const bodyStr =
     body == null ? undefined : typeof body === 'string' ? body : JSON.stringify(body)
+
+  const fail = (err: unknown) => {
+    if (settled) return
+    settled = true
+    handlers.onError(err)
+  }
 
   fetchEventSource(url, {
     method: 'POST',
@@ -48,31 +68,63 @@ export function createSseSource(opts: SseSourceOptions, handlers: SseSourceHandl
     },
     body: bodyStr,
     signal: ctrl.signal,
+    // 页面隐藏时保持同一条请求；打字机自行处理隐藏/恢复，避免库自动重发完整 POST。
+    openWhenHidden: true,
+    async onopen(response) {
+      if (!response.ok) {
+        const message = `SSE request failed: HTTP ${response.status} ${response.statusText}`.trim()
+        if (RETRYABLE_HTTP_STATUSES.has(response.status)) throw new RetryableSseError(message)
+        throw new FatalSseError(message)
+      }
+
+      const contentType = response.headers.get('content-type')?.toLowerCase()
+      if (!contentType?.startsWith(EVENT_STREAM_CONTENT_TYPE)) {
+        throw new FatalSseError(
+          `SSE protocol error: expected ${EVENT_STREAM_CONTENT_TYPE}, received ${contentType ?? 'missing content-type'}`,
+        )
+      }
+    },
     onmessage(ev) {
+      if (settled) return
       try {
         const data = ev?.data
-        if (!data || data === '[DONE]') return
+        if (!data) return
+        if (data === '[DONE]') {
+          receivedDone = true
+          settled = true
+          handlers.onComplete()
+          ctrl.abort()
+          return
+        }
         handlers.onFrame?.(data, performance.now() - startedAt)
         const text = pickText(data)
         if (text) handlers.onChunk(text)
       } catch (e) {
-        handlers.onError(e)
+        fail(e)
+        ctrl.abort()
       }
     },
     onclose() {
-      handlers.onClose()
+      if (!receivedDone) {
+        fail(new Error('SSE stream closed before receiving [DONE]'))
+      }
     },
     onerror(err) {
-      if (retryCount < maxRetries) {
+      if (settled || ctrl.signal.aborted) throw err
+      const retryable = err instanceof RetryableSseError || err instanceof TypeError
+      if (retryable && retryCount < maxRetries) {
         retryCount++
+        receivedDone = false
         handlers.onRetry?.(retryCount)
-        throw err // 抛出让 fetch-event-source 自动重连
+        // fetch-event-source 只有在 onerror 正常返回时才会按间隔重新发起请求。
+        return undefined
       }
-      handlers.onError(err)
-      // 不抛出 → 库停止重连
+      fail(err)
+      // 不可重试错误或次数耗尽：抛出以停止 fetch-event-source 的默认无限重试。
+      throw err
     },
   }).catch(() => {
-    // fetchEventSource 在 abort 时会 reject；已经通过 onerror 或 abort 路径处理过，吞掉即可
+    // 错误已通过 onError 传出；主动 abort 也会结束 Promise，这里只负责收口。
   })
 
   return {
