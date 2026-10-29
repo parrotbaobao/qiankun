@@ -142,8 +142,6 @@ interface MetricsAcc {
     usage?: ChatUsage
     frames: string[]
     rawRequest: string
-    /** 上游在流内返回的错误（如 {"error":"Request timed out."}） */
-    errorMsg?: string
 }
 let metricsAcc: MetricsAcc | null = null
 
@@ -351,30 +349,21 @@ function sendToAI(text: string) {
         url: props.url ?? CHAT_STREAM_URL,
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         maxRetries: 3,
-        onFrame(data, elapsedMs) {
+        onFrame(data) {
             if (!metricsAcc) return
             metricsAcc.frames.push(data)
-            try {
-                const obj = JSON.parse(data)
-                // 上游在 200 流里塞的错误帧（超时/上游不可达等），单独记下以便呈现为错误
-                if (obj?.error != null) {
-                    metricsAcc.errorMsg = typeof obj.error === 'string' ? obj.error : (obj.error.message ?? '上游返回错误')
-                }
-                const choice = obj?.choices?.[0]
-                if (choice?.finish_reason != null) metricsAcc.finishReason = choice.finish_reason
-                if (obj?.usage) {
-                    metricsAcc.usage = {
-                        prompt_tokens: obj.usage.prompt_tokens,
-                        completion_tokens: obj.usage.completion_tokens,
-                        total_tokens: obj.usage.total_tokens,
-                    }
-                }
-                // TTFT：首个带内容（正文或推理）的增量帧到达时刻
-                if (metricsAcc.ttftMs == null) {
-                    const d = choice?.delta ?? {}
-                    if (d.content || d.reasoning_content) metricsAcc.ttftMs = elapsedMs
-                }
-            } catch { /* 非 JSON 帧（如 error），仅保留在 frames 中 */ }
+        },
+        onProtocolEvent(event, elapsedMs) {
+            if (!metricsAcc) return
+            const metadata = 'metadata' in event ? event.metadata : undefined
+            if (metadata?.finishReason) metricsAcc.finishReason = metadata.finishReason
+            if (metadata?.usage) metricsAcc.usage = metadata.usage
+            if (metricsAcc.ttftMs == null && (
+                (event.type === 'text' && event.text.length > 0)
+                || metadata?.hasReasoning
+            )) {
+                metricsAcc.ttftMs = elapsedMs
+            }
         },
         onReconnecting(attempt) {
             reconnectAttempt.value = attempt
@@ -387,13 +376,6 @@ function sendToAI(text: string) {
             phase.value = s.kind
         },
         body,
-        pickText: (data: string) => {
-            if (data === '[DONE]') return ''
-            try {
-                const obj = JSON.parse(data)
-                return obj.choices?.[0]?.delta?.content ?? ''
-            } catch { return '' }
-        },
         onText(value) {
             if (!streamingMessage.value) return
             streamingMessage.value.loading = false
@@ -402,11 +384,11 @@ function sendToAI(text: string) {
             reconnectAttempt.value = 0
             if (!document.hidden) scrollToBottom()
         },
-        onError(err: any) {
+        onError(err: unknown) {
             streaming.value = false
             if (streamingMessage.value) {
                 streamingMessage.value.loading = false
-                streamingMessage.value.content = `⚠️ ${err?.message ?? '请求失败'}`
+                streamingMessage.value.content = `⚠️ ${err instanceof Error ? err.message : '请求失败'}`
                 streamingMessage.value.status = 'ERROR'
                 if (metricsAcc) streamingMessage.value.metrics = buildMetrics('')
                 messages.push(streamingMessage.value)
@@ -418,17 +400,9 @@ function sendToAI(text: string) {
         onDone() {
             streaming.value = false
             if (streamingMessage.value) {
-                let aiContent = streamingMessage.value.content
+                const aiContent = streamingMessage.value.content
                 streamingMessage.value.loading = false
-                // 流正常关闭，但上游其实塞了错误帧且没有正文 → 呈现为错误而非空白“已完成”
-                const errMsg = metricsAcc?.errorMsg
-                if (errMsg && !aiContent) {
-                    streamingMessage.value.content = `⚠️ ${errMsg}`
-                    streamingMessage.value.status = 'ERROR'
-                    aiContent = ''
-                } else {
-                    streamingMessage.value.status = 'DONE'
-                }
+                streamingMessage.value.status = 'DONE'
                 if (metricsAcc) streamingMessage.value.metrics = buildMetrics(aiContent)
                 messages.push(streamingMessage.value)
                 streamingMessage.value = null

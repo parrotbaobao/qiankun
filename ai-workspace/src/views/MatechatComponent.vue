@@ -205,54 +205,6 @@ interface ActiveRound {
   abort: (() => void) | null
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function parseOpenAITextDelta(data: string): string {
-  let payload: unknown
-  try {
-    payload = JSON.parse(data)
-  } catch {
-    throw new Error('SSE 协议错误：data 不是有效 JSON')
-  }
-  if (!isRecord(payload)) throw new Error('SSE 协议错误：data 必须是 JSON 对象')
-
-  if (payload.error != null) {
-    const detail = typeof payload.error === 'string'
-      ? payload.error
-      : isRecord(payload.error) && typeof payload.error.message === 'string'
-        ? payload.error.message
-        : '上游返回错误'
-    throw new Error(detail)
-  }
-
-  // OpenAI include_usage 的末帧允许 choices=[]，它只携带统计信息，不包含正文。
-  if (Array.isArray(payload.choices) && payload.choices.length === 0 && payload.usage != null) return ''
-  if (!Array.isArray(payload.choices) || !isRecord(payload.choices[0])) {
-    throw new Error('SSE 协议错误：缺少 choices[0]')
-  }
-
-  const choice = payload.choices[0]
-  if (!isRecord(choice.delta)) {
-    if (choice.finish_reason != null) return ''
-    throw new Error('SSE 协议错误：缺少 choices[0].delta')
-  }
-
-  const content = choice.delta.content
-  if (typeof content === 'string') return content
-  if (content != null) throw new Error('SSE 协议错误：delta.content 必须是字符串')
-
-  // role、reasoning_content、工具调用和 finish_reason 是已知的非正文增量，允许忽略。
-  const knownNonTextDelta = typeof choice.delta.role === 'string'
-    || typeof choice.delta.reasoning_content === 'string'
-    || choice.delta.tool_calls != null
-    || choice.delta.function_call != null
-    || choice.finish_reason != null
-  if (knownNonTextDelta) return ''
-  throw new Error('SSE 协议错误：delta 中没有可识别的内容')
-}
-
 let nextRoundId = 0
 let activeRound: ActiveRound | null = null
 
@@ -438,8 +390,6 @@ function handleSubmit(val?: string) {
       temperature: 0.7,
       max_tokens: 8192,
     },
-    // OpenAI SSE 格式：data: {"choices":[{"delta":{"content":"..."}}]}
-    pickText: parseOpenAITextDelta,
     onStateChange(state) {
       handleRoundState(round, state)
     },

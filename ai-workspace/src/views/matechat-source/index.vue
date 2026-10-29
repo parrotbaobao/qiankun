@@ -526,10 +526,6 @@ function handleSubmit(val?: string) {
       temperature: 0.7,
       max_tokens: 8192,
     },
-    pickText: (data: string) => {
-      if (data === '[DONE]') return ''
-      try { return JSON.parse(data).choices?.[0]?.delta?.content ?? '' } catch { return '' }
-    },
     onText(value) {
       const last = messages.value.at(-1)
       if (!last || last.from !== 'ai') return

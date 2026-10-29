@@ -1,5 +1,5 @@
-// SSE 源：只负责建立连接、解析每帧 data、把"增量文本"通过 onChunk 喂出去
-// 不关心打字机节奏，也不关心累计文本
+// SSE 源：只负责 HTTP 请求、SSE data 事件、响应校验、重试和取消。
+// 不解释 data 内的模型协议，也不关心文本、完成标记或打字机。
 
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 
@@ -18,24 +18,17 @@ export interface SseSourceOptions {
   url: string
   headers?: Record<string, string>
   body?: { [k: string]: unknown } | string | null
-  /** 从一帧 data 提取增量文本；默认原样返回 */
-  pickText?: (evData: string) => string
   /** 最大重连次数；0 表示不重连 */
   maxRetries?: number
 }
 
 export interface SseSourceHandlers {
-  onChunk: (text: string) => void
-  /** 收到 OpenAI 兼容协议的 [DONE] 结束帧 */
-  onComplete: () => void
+  onMessage: (data: string, elapsedMs: number) => void
+  /** HTTP/SSE 连接自然关闭；是否为业务完成由上层协议适配器判断 */
+  onClose: () => void
   onError: (err: unknown) => void
   /** 准备进行第 attempt 次重连时回调（attempt 从 1 开始） */
   onRetry?: (attempt: number) => void
-  /**
-   * 每收到一帧原始 data（不含 [DONE]）时回调，附带自请求发出起的耗时（ms）。
-   * 供可观测性面板统计 TTFT / usage / finish_reason / 原始响应，pickText 之外的旁路。
-   */
-  onFrame?: (data: string, elapsedMs: number) => void
 }
 
 export interface SseSource {
@@ -43,11 +36,10 @@ export interface SseSource {
 }
 
 export function createSseSource(opts: SseSourceOptions, handlers: SseSourceHandlers): SseSource {
-  const { url, headers, body, pickText = (s) => s, maxRetries = 0 } = opts
+  const { url, headers, body, maxRetries = 0 } = opts
   const ctrl = new AbortController()
   let retryCount = 0
   let settled = false
-  let receivedDone = false
   const startedAt = performance.now()
 
   const bodyStr =
@@ -87,34 +79,22 @@ export function createSseSource(opts: SseSourceOptions, handlers: SseSourceHandl
     onmessage(ev) {
       if (settled) return
       try {
-        const data = ev?.data
-        if (!data) return
-        if (data === '[DONE]') {
-          receivedDone = true
-          settled = true
-          handlers.onComplete()
-          ctrl.abort()
-          return
-        }
-        handlers.onFrame?.(data, performance.now() - startedAt)
-        const text = pickText(data)
-        if (text) handlers.onChunk(text)
+        handlers.onMessage(ev?.data ?? '', performance.now() - startedAt)
       } catch (e) {
         fail(e)
         ctrl.abort()
       }
     },
     onclose() {
-      if (!receivedDone) {
-        fail(new Error('SSE stream closed before receiving [DONE]'))
-      }
+      if (settled) return
+      settled = true
+      handlers.onClose()
     },
     onerror(err) {
       if (settled || ctrl.signal.aborted) throw err
       const retryable = err instanceof RetryableSseError || err instanceof TypeError
       if (retryable && retryCount < maxRetries) {
         retryCount++
-        receivedDone = false
         handlers.onRetry?.(retryCount)
         // fetch-event-source 只有在 onerror 正常返回时才会按间隔重新发起请求。
         return undefined
