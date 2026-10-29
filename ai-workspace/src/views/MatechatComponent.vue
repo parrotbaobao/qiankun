@@ -121,8 +121,9 @@
     <!-- ── 输入区 ── -->
     <div class="mc-footer">
       <McInput :value="inputText" placeholder="发送消息…" variant="bordered" :loading="isBusy" :maxLength="2000"
-        :show-count="true" @change="(v: string) => (inputText = v)" @submit="handleSubmit" />
-      <p class="mc-footer-hint">Enter 发送 · Shift+Enter 换行 · 流式输出中 Enter 可停止</p>
+        :show-count="true" :submit-short-key="isBusy ? null : undefined"
+        @change="(v: string) => (inputText = v)" @submit="handleSubmit" @cancel="handleStop" />
+      <p class="mc-footer-hint">Enter 发送 · Shift+Enter 换行 · 生成中点击停止按钮结束</p>
     </div>
   </div>
 </template>
@@ -350,16 +351,17 @@ function submitDislike(idx: number) {
   // 实际项目：FeedbackService.submit({ idx, tags: dislike.tags, comment: dislike.comment })
 }
 
-// ── 核心函数：发送消息 / 停止流式输出 ────────────────────────────────────────
-// val 参数：来自快捷提问时传入文字，来自输入框时不传（从 inputText 读）
-function handleSubmit(val?: string) {
-  const text = (val ?? inputText.value).trim()
+// 停止只由明确的取消操作触发，不与重复发送共用分支。
+function handleStop() {
+  if (!isBusy.value) return
+  cancelActiveRound()
+}
 
-  // ── 停止分支：忙碌时再次触发 = 中止当前轮；STOPPED 由 aborted 状态映射得出 ──
-  if (isBusy.value) {
-    cancelActiveRound()
-    return
-  }
+// ── 核心函数：发送消息 ──────────────────────────────────────────────────────
+// val 参数：来自快捷提问或输入组件，不传时从 inputText 读取。
+function handleSubmit(val?: string) {
+  if (isBusy.value) return
+  const text = (val ?? inputText.value).trim()
 
   if (!text) return
   if (!val) inputText.value = ''  // 来自输入框的发送 → 清空输入框
