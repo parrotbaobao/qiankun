@@ -307,11 +307,11 @@ function reAnswer(userIdx: number) {
 // ── 重新生成（AI 消息底部的"刷新"按钮）──────────────────────────────────────
 // 找到这条 AI 消息对应的上一条用户消息，删除 AI 消息后重新请求
 function regenerate(aiIdx: number) {
-  if (isBusy.value) return
+  if (isBusy.value || messages.value[aiIdx]?.from !== 'ai') return
   for (let i = aiIdx - 1; i >= 0; i--) {
     if (messages.value[i].from === 'user') {
       messages.value.splice(aiIdx)           // 删除 AI 消息（及其后面的内容）
-      handleSubmit(messages.value[i].content) // 用那条用户消息重新发请求
+      startReply()                          // 保留原用户消息，只重新创建 AI 回答
       return
     }
   }
@@ -366,10 +366,14 @@ function handleSubmit(val?: string) {
   if (!text) return
   if (!val) inputText.value = ''  // 来自输入框的发送 → 清空输入框
 
-  // ── 发送分支 ──────────────────────────────────────────────────────────────
-  // 1. 把用户消息推入列表
   messages.value.push({ from: 'user', content: text })
-  // 2. 推入 AI 占位消息（loading=true → 显示三点动画）
+  startReply()
+}
+
+// 新发送和重新生成共用请求流程；这里只创建 AI 消息，不重复添加用户消息。
+function startReply() {
+  if (isBusy.value) return
+  // 推入 AI 占位消息（loading=true → 显示三点动画）
   messages.value.push({ from: 'ai', content: '', loading: true })
   const targetMessage = messages.value[messages.value.length - 1]
   const round: ActiveRound = { id: ++nextRoundId, message: targetMessage, abort: null }
