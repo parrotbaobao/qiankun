@@ -66,7 +66,7 @@
 
             <!-- MarkdownCard 渲染正文 -->
             <MarkdownCard v-if="!msg.loading && msg.status !== 'RECONNECTING'" :content="renderContent(msg)"
-              theme="light" :enable-think="true" />
+              theme="light" :enable-think="true" :typing="streaming && !msg.status" @typing="scrollToBottom" />
 
             <!-- bottom：状态标记 + 操作按钮 + 点踩弹窗 -->
             <template #bottom v-if="!msg.loading && msg.status !== 'RECONNECTING'">
@@ -512,6 +512,7 @@ function handleSubmit(val?: string) {
     .map(m => ({ role: m.from === 'user' ? 'user' : 'assistant', content: m.content }))
 
   const { abort } = createChatStream({
+    typewriter: false, // 使用 MarkdownCard 内置动画，避免双重打字
     maxRetries: 1,
     onReconnecting(attempt) {
       const last = messages.value.at(-1)

@@ -20,6 +20,8 @@ export interface ChatStreamOptions {
   body?: { [k: string]: unknown }
   /** 协议适配器；默认使用当前 OpenAI 兼容流适配器 */
   adapter?: StreamAdapter
+  /** 关闭外层打字队列，交由展示组件控制动画；默认开启 */
+  typewriter?: boolean
   maxRetries?: number
   onReconnecting?: (attempt: number) => void
   onFrame?: (data: string, elapsedMs: number) => void
@@ -36,7 +38,8 @@ export interface ChatStream {
   on<K extends ChatState['kind']>(kind: K, fn: (s: ChatStateOf<K>) => void): () => void
 }
 
-const DEFAULT_URL = '/lm-studio/v1/chat/completions'
+// 使用网关绝对地址，避免 qiankun 嵌入后相对路径错误地请求主应用 4200 端口。
+const DEFAULT_URL = 'http://localhost:3200/v1/chat/completions'
 
 export function createChatStream(options: ChatStreamOptions): ChatStream {
   const sm = createStateMachine()
@@ -49,8 +52,8 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
     ? sm.subscribe(options.onStateChange)
     : null
 
-  const typewriter = createTypewriter({
-    onText: (full) => {
+  const textHandlers = {
+    onText: (full: string) => {
       if (firstChunk) {
         firstChunk = false
         sm.send({ type: 'firstChunk' })
@@ -63,7 +66,19 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
       options.onDone?.()
       cleanup()
     },
-  })
+  }
+  let fullText = ''
+  const typewriter = options.typewriter === false
+    ? {
+        enqueue(text: string) {
+          fullText += text
+          textHandlers.onText(fullText)
+        },
+        markStreamClosed() { textHandlers.onDrained() },
+        reset() { fullText = '' },
+        dispose() {},
+      }
+    : createTypewriter(textHandlers)
 
   const cleanup = () => {
     source?.abort()

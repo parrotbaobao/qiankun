@@ -14,7 +14,7 @@
 import hljs from 'highlight.js';                          // 代码语法高亮库
 import markdownit from 'markdown-it';                     // Markdown 解析器
 import type Token from 'markdown-it/lib/token.mjs';      // Token 类型（markdown-it v14+ ESM）
-import { Fragment, type VNode, computed, createTextVNode, h, nextTick, onMounted, ref, useSlots, watch } from 'vue';
+import { Fragment, type VNode, computed, createTextVNode, h, nextTick, onMounted, onBeforeUnmount, ref, useSlots, watch } from 'vue';
 import CodeBlock from './CodeBlock.vue';                  // 代码块子组件（带复制/折叠/Mermaid）
 import { MDCardService } from '@matechat/common/MarkdownCard/common/MDCardService';  // XSS过滤服务
 import { mdCardProps } from './mdCard.types';             // Props 定义（见 mdCard.types.ts）
@@ -400,7 +400,10 @@ const createCodeBlock = (language: string, code: string, blockIndex: number) => 
  *
  * clearTimeout(timer!)：先清除上一次动画，防止 content 频繁更新时动画堆叠
  */
+let disposed = false;
+
 const typewriterStart = () => {
+  if (disposed || !props.typing) return;
   clearTimeout(timer!) // 取消上一次还未执行的 typingStep
 
   isTyping.value = true;
@@ -463,6 +466,20 @@ const typewriterEnd = () => {
   isTyping.value = false;
   emit('typingEnd');
 }
+
+// 停止或接收完成后关闭动画，立即展示当前已接收内容。
+watch(() => props.typing, (typing) => {
+  if (typing) return;
+  clearTimeout(timer!);
+  isTyping.value = false;
+  typingIndex.value = props.content.length;
+  parseContent();
+});
+
+onBeforeUnmount(() => {
+  disposed = true;
+  clearTimeout(timer!);
+});
 
 // ── watch：customXssRules 变化时更新 MDCardService 的白名单 ──────────────────
 // 父组件可以动态调整 XSS 规则（如允许 iframe），变化后立即重新渲染
