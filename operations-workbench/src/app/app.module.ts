@@ -1,7 +1,5 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { MfeAgent } from '@mfe-demo/microfrontend-state';
-import { PORTAL_AGENT } from './core/portal-agent.token';
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 import { HttpClient } from '@angular/common/http';
@@ -45,10 +43,6 @@ import { IconUploadNavComponent } from './shared/icons/icon-upload-nav.component
     {
       provide: APP_BASE_HREF,
       useValue: (window as any).__POWERED_BY_QIANKUN__ ? '/operations-workbench' : '/',
-    },
-    {
-      provide: PORTAL_AGENT,
-      useFactory: () => MfeAgent.getInstance(),
     },
     OrchestrationService,
   ],

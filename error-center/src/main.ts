@@ -5,7 +5,7 @@ import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
 import { AppModule } from './app/app.module';
 import { getSingleSpaExtraProviders, singleSpaAngular } from 'single-spa-angular';
 import { Subject } from 'rxjs';
-import { MfeAgent } from '@mfe-demo/microfrontend-state';
+import { initCommunication, destroyCommunication } from './communication';
 
 export const singleSpaPropsSubject = new Subject<any>();
 
@@ -15,16 +15,10 @@ if (!(window as any).__POWERED_BY_QIANKUN__) {
     .catch(err => console.error(err));
 }
 
-let portalAgent: MfeAgent | null = null;
-
-export const createAgent = (singleSpaProps: any): void => {
-  portalAgent = new MfeAgent(singleSpaProps);
-};
-
 const lifecycles = singleSpaAngular({
   bootstrapFunction: (singleSpaProps: any) => {
     if (singleSpaProps) {
-      createAgent(singleSpaProps);
+      initCommunication(singleSpaProps);
     }
     singleSpaPropsSubject.next(singleSpaProps);
     return platformBrowserDynamic(getSingleSpaExtraProviders()).bootstrapModule(AppModule);
@@ -42,7 +36,6 @@ export const mount = (props: Record<string, unknown>) => {
 };
 
 export const unmount = (props: Record<string, unknown>) => {
-  portalAgent?.destroy();
-  portalAgent = null;
+  destroyCommunication();
   return (lifecycles.unmount as LifecycleFn)(props);
 };

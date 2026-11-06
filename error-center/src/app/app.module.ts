@@ -7,13 +7,11 @@ import { APP_BASE_HREF } from '@angular/common';
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 import { HttpClient } from '@angular/common/http';
-import { MfeAgent } from '@mfe-demo/microfrontend-state';
 import { DevUIModule } from 'ng-devui';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { ErrorCenterComponent } from './features/error-center/error-center.component';
-import { PORTAL_AGENT } from './core/portal-agent.token';
 
 @NgModule({
   declarations: [AppComponent, ErrorCenterComponent],
@@ -37,10 +35,6 @@ import { PORTAL_AGENT } from './core/portal-agent.token';
     {
       provide: APP_BASE_HREF,
       useValue: (window as any).__POWERED_BY_QIANKUN__ ? '/error-center' : '/',
-    },
-    {
-      provide: PORTAL_AGENT,
-      useFactory: () => MfeAgent.getInstance(),
     },
   ],
   bootstrap: [AppComponent],

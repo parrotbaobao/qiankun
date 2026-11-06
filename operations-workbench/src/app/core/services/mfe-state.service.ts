@@ -1,6 +1,5 @@
-import { Inject, Injectable, NgZone, OnDestroy, Optional } from '@angular/core';
+import { Injectable, NgZone, OnDestroy } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { MfeAgent } from '@mfe-demo/microfrontend-state';
 import type {
   MfeContext,
   NavigationEvent,
@@ -14,7 +13,7 @@ import type {
   ServiceMenuEvent,
   CheckUserLoginEvent,
 } from '@mfe-demo/microfrontend-state';
-import { PORTAL_AGENT } from '../portal-agent.token';
+import { getCommunication } from '../../../communication';
 
 @Injectable({ providedIn: 'root' })
 export class MfeStateService implements OnDestroy {
@@ -31,10 +30,10 @@ export class MfeStateService implements OnDestroy {
 
   private _unsubscribe: (() => void) | null = null;
 
-  constructor(
-    private ngZone: NgZone,
-    @Optional() @Inject(PORTAL_AGENT) private agent: MfeAgent | null,
-  ) {
+  private readonly agent = getCommunication();
+
+  constructor(private ngZone: NgZone) {
+    const agent = this.agent;
     if (agent) {
       this._context$.next(agent.context);
       this._unsubscribe = agent.onContextChange((ctx) => {
