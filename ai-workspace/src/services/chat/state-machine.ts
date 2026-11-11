@@ -1,11 +1,3 @@
-// 显式状态机：替代散落的 streamClosed / isPumping 等布尔标志
-// 状态转换图：
-//   idle ──connect──▶ connecting ──firstChunk──▶ streaming ──streamClosed+queueDrained──▶ done
-//                          │                          │
-//                          │                          ├──retry──▶ reconnecting ──firstChunk──▶ streaming
-//                          │                          │
-//                          └──error/abort─────────────┴──▶ error / aborted
-
 export type ChatState =
   | { kind: 'idle' }
   | { kind: 'connecting' }
@@ -24,77 +16,82 @@ export type ChatEvent =
   | { type: 'error'; error: unknown }
   | { type: 'abort' }
 
-/** 按 kind 取出对应的状态对象类型（窄化），方便 on(kind) 回调拿到带 payload 的状态 */
-export type ChatStateOf<K extends ChatState['kind']> = Extract<ChatState, { kind: K }>
-
 export interface StateMachine {
   readonly state: ChatState
   /** 订阅所有状态变化（无过滤） */
   subscribe(fn: (s: ChatState) => void): () => void
-  /** 只在进入指定 kind 时回调；回调里的 s 已被窄化到对应 payload */
-  on<K extends ChatState['kind']>(kind: K, fn: (s: ChatStateOf<K>) => void): () => void
   send(ev: ChatEvent): void
+  dispose(): void
 }
 
-export function createStateMachine(): StateMachine {
-  let state: ChatState = { kind: 'idle' }
-  let streamClosed = false
-  const listeners = new Set<(s: ChatState) => void>()
+/** 一轮请求的内部快照；连接结束与展示结束是两个不同的信号。 */
+export interface MachineSnapshot {
+  readonly state: ChatState
+  readonly streamClosed: boolean
+}
 
-  const set = (next: ChatState) => {
-    if (next.kind === state.kind && JSON.stringify(next) === JSON.stringify(state)) return
-    state = next
-    listeners.forEach(l => l(state))
+function isActiveChatState(state: ChatState): boolean {
+  return state.kind === 'connecting' || state.kind === 'streaming' || state.kind === 'reconnecting'
+}
+
+/** 纯函数：只计算下一快照，不发请求、不通知页面；非法事件返回原快照。 */
+export function transition(snapshot: MachineSnapshot, event: ChatEvent): MachineSnapshot {
+  const { state, streamClosed } = snapshot
+  if (state.kind === 'idle') {
+    return event.type === 'connect'
+      ? { state: { kind: 'connecting' }, streamClosed: false }
+      : snapshot
+  }
+  if (!isActiveChatState(state)) return snapshot
+
+  switch (event.type) {
+    case 'firstChunk':
+      return state.kind === 'streaming' ? snapshot : { ...snapshot, state: { kind: 'streaming' } }
+    case 'streamClosed':
+      return streamClosed ? snapshot : { ...snapshot, streamClosed: true }
+    case 'queueDrained':
+      return streamClosed ? { ...snapshot, state: { kind: 'done' } } : snapshot
+    case 'retry':
+      if (streamClosed || !Number.isInteger(event.attempt) || event.attempt < 1) return snapshot
+      return { state: { kind: 'reconnecting', attempt: event.attempt }, streamClosed: false }
+    case 'error':
+      return { ...snapshot, state: { kind: 'error', error: event.error } }
+    case 'abort':
+      return { ...snapshot, state: { kind: 'aborted' } }
+    default:
+      return snapshot
+  }
+}
+
+/** 每轮请求创建一个实例；终态不复用，新请求创建新状态机。 */
+export function createStateMachine(): StateMachine {
+  let snapshot: MachineSnapshot = { state: { kind: 'idle' }, streamClosed: false }
+  let disposed = false
+  const listeners = new Set<(state: ChatState) => void>()
+
+  const subscribe = (listener: (state: ChatState) => void) => {
+    if (!disposed) listeners.add(listener)
+    return () => { listeners.delete(listener) }
   }
 
-  const isTerminal = () =>
-    state.kind === 'done' || state.kind === 'error' || state.kind === 'aborted'
-
   return {
-    get state() { return state },
-    subscribe(fn) { listeners.add(fn); return () => { listeners.delete(fn) } },
-    on(kind, fn) {
-      const wrapper = (s: ChatState) => {
-        if (s.kind === kind) fn(s as ChatStateOf<typeof kind>)
+    get state() { return snapshot.state },
+    subscribe,
+    send(event) {
+      if (disposed) return
+      const previous = snapshot
+      snapshot = transition(snapshot, event)
+      if (snapshot.state === previous.state) return
+
+      // 订阅者负责同步页面；状态事件由协调层发送。
+      const published = snapshot.state
+      for (const listener of [...listeners]) {
+        if (listeners.has(listener)) listener(published)
       }
-      listeners.add(wrapper)
-      return () => { listeners.delete(wrapper) }
     },
-    send(ev) {
-      if (isTerminal()) return
-      switch (ev.type) {
-        case 'connect':
-          streamClosed = false
-          set({ kind: 'connecting' })
-          break
-        case 'firstChunk':
-          if (state.kind === 'connecting' || state.kind === 'reconnecting') {
-            set({ kind: 'streaming' })
-          }
-          break
-        case 'retry':
-          streamClosed = false
-          set({ kind: 'reconnecting', attempt: ev.attempt })
-          break
-        case 'streamClosed':
-          streamClosed = true
-          break
-        case 'queueDrained':
-          if (streamClosed && (
-            state.kind === 'streaming'
-            || state.kind === 'connecting'
-            || state.kind === 'reconnecting'
-          )) {
-            set({ kind: 'done' })
-          }
-          break
-        case 'error':
-          set({ kind: 'error', error: ev.error })
-          break
-        case 'abort':
-          set({ kind: 'aborted' })
-          break
-      }
+    dispose() {
+      disposed = true
+      listeners.clear()
     },
   }
 }

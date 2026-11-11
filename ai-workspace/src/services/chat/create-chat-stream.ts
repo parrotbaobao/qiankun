@@ -1,7 +1,7 @@
-import { openAIStreamAdapter, type ChatUsage, type StreamAdapter, type StreamProtocolEvent } from './openai-stream-adapter'
+import { openAIStreamAdapter, type ChatUsage, type StreamProtocolEvent } from './openai-stream-adapter'
 import { createSseSource, type SseSource } from './sse-source'
 import { createTypewriter } from './typewriter'
-import { createStateMachine, type ChatState, type ChatStateOf } from './state-machine'
+import { createStateMachine, type ChatState } from './state-machine'
 
 export interface ChatMetrics {
   ttftMs?: number
@@ -18,8 +18,6 @@ export interface ChatStreamOptions {
   url?: string
   headers?: Record<string, string>
   body?: { [k: string]: unknown }
-  /** 协议适配器；默认使用当前 OpenAI 兼容流适配器 */
-  adapter?: StreamAdapter
   /** 关闭外层打字队列，交由展示组件控制动画；默认开启 */
   typewriter?: boolean
   maxRetries?: number
@@ -34,8 +32,6 @@ export interface ChatStreamOptions {
 
 export interface ChatStream {
   abort(): void
-  readonly state: ChatState
-  on<K extends ChatState['kind']>(kind: K, fn: (s: ChatStateOf<K>) => void): () => void
 }
 
 // 使用网关绝对地址，避免 qiankun 嵌入后相对路径错误地请求主应用 4200 端口。
@@ -43,7 +39,7 @@ const DEFAULT_URL = 'http://localhost:3200/v1/chat/completions'
 
 export function createChatStream(options: ChatStreamOptions): ChatStream {
   const sm = createStateMachine()
-  const adapter = options.adapter ?? openAIStreamAdapter
+  const adapter = openAIStreamAdapter
   let firstChunk = true
   let protocolCompleted = false
   let source: SseSource | null = null
@@ -63,8 +59,8 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
     onDrained: () => {
       sm.send({ type: 'queueDrained' })
       if (sm.state.kind !== 'done') return
-      options.onDone?.()
       cleanup()
+      options.onDone?.()
     },
   }
   let fullText = ''
@@ -84,15 +80,14 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
     source?.abort()
     typewriter.dispose()
     unsubscribeState?.()
+    sm.dispose()
   }
 
   const fail = (error: unknown) => {
     if (sm.state.kind === 'aborted' || sm.state.kind === 'done' || sm.state.kind === 'error') return
     sm.send({ type: 'error', error })
-    typewriter.dispose()
+    cleanup()
     options.onError?.(error)
-    unsubscribeState?.()
-    source?.abort()
   }
 
   sm.send({ type: 'connect' })
@@ -155,7 +150,5 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
       sm.send({ type: 'abort' })
       cleanup()
     },
-    get state() { return sm.state },
-    on: sm.on,
   }
 }
