@@ -58,7 +58,7 @@
             </template>
 
             <!-- 正文 Markdown -->
-            <McMarkdownCard v-else-if="!msg.loading" :content="msg.content" theme="light" />
+            <McMarkdownCard v-else-if="!msg.loading" :content="msg.content" :typing="msg.status !== 'ERROR' && msg.status !== 'STOPPED'" theme="light" />
 
             <!-- bottom：状态 + 操作按钮 + 点踩弹窗 -->
             <template #bottom v-if="!msg.loading && msg.status !== 'RECONNECTING'">

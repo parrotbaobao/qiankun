@@ -1,6 +1,5 @@
 import { openAIStreamAdapter, type ChatUsage, type StreamProtocolEvent } from './openai-stream-adapter'
 import { createSseSource, type SseSource } from './sse-source'
-import { createTypewriter } from './typewriter'
 import { createStateMachine, type ChatState } from './state-machine'
 
 export interface ChatMetrics {
@@ -18,8 +17,6 @@ export interface ChatStreamOptions {
   url?: string
   headers?: Record<string, string>
   body?: { [k: string]: unknown }
-  /** 关闭外层打字队列，交由展示组件控制动画；默认开启 */
-  typewriter?: boolean
   maxRetries?: number
   onReconnecting?: (attempt: number) => void
   onFrame?: (data: string, elapsedMs: number) => void
@@ -48,37 +45,11 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
     ? sm.subscribe(options.onStateChange)
     : null
 
-  const textHandlers = {
-    onText: (full: string) => {
-      if (firstChunk) {
-        firstChunk = false
-        sm.send({ type: 'firstChunk' })
-      }
-      options.onText(full)
-    },
-    onDrained: () => {
-      sm.send({ type: 'queueDrained' })
-      if (sm.state.kind !== 'done') return
-      cleanup()
-      options.onDone?.()
-    },
-  }
+  // 请求层只累计文本，展示节奏交给组件。
   let fullText = ''
-  const typewriter = options.typewriter === false
-    ? {
-        enqueue(text: string) {
-          fullText += text
-          textHandlers.onText(fullText)
-        },
-        markStreamClosed() { textHandlers.onDrained() },
-        reset() { fullText = '' },
-        dispose() {},
-      }
-    : createTypewriter(textHandlers)
 
   const cleanup = () => {
     source?.abort()
-    typewriter.dispose()
     unsubscribeState?.()
     sm.dispose()
   }
@@ -114,13 +85,18 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
 
         switch (event.type) {
           case 'text':
-            typewriter.enqueue(event.text)
+            fullText += event.text
+            if (firstChunk) {
+              firstChunk = false
+              sm.send({ type: 'firstChunk' })
+            }
+            options.onText(fullText)
             break
           case 'complete':
             protocolCompleted = true
-            sm.send({ type: 'streamClosed' })
-            typewriter.markStreamClosed()
-            source?.abort()
+            sm.send({ type: 'complete' })
+            cleanup()
+            options.onDone?.()
             break
           case 'error':
             fail(event.error)
@@ -137,7 +113,7 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
       onRetry(attempt) {
         protocolCompleted = false
         sm.send({ type: 'retry', attempt })
-        typewriter.reset({ keepDisplay: false })
+        fullText = ''
         firstChunk = true
         options.onReconnecting?.(attempt)
       },

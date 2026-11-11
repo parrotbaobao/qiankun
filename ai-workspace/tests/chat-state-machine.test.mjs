@@ -11,16 +11,12 @@ test('忽略空闲时非法事件，重复 connect 不打断接收', () => {
   m.send({ type: 'connect' })
   assert.equal(m.state.kind, 'streaming')
 })
-test('业务完成后仍等待展示队列排空，支持空回答', () => {
+test('业务完成直接结束，支持空回答', () => {
   for (const hasText of [true, false]) {
     const m = createStateMachine()
     m.send({ type: 'connect' })
     if (hasText) m.send({ type: 'firstChunk' })
-    m.send({ type: 'queueDrained' })
-    assert.notEqual(m.state.kind, 'done')
-    m.send({ type: 'streamClosed' })
-    assert.notEqual(m.state.kind, 'done')
-    m.send({ type: 'queueDrained' })
+    m.send({ type: 'complete' })
     assert.equal(m.state.kind, 'done')
   }
 })
@@ -30,7 +26,7 @@ test('停止和失败是终态，迟到消息不能恢复生成', () => {
     m.send({ type: 'connect' })
     m.send(event)
     const terminal = m.state
-    for (const e of [{ type: 'firstChunk' }, { type: 'retry', attempt: 1 }, { type: 'streamClosed' }, { type: 'queueDrained' }]) m.send(e)
+    for (const e of [{ type: 'firstChunk' }, { type: 'retry', attempt: 1 }, { type: 'complete' }]) m.send(e)
     assert.equal(m.state, terminal)
   }
 })
@@ -42,9 +38,9 @@ test('重试次数有效且业务完成后禁止重试', () => {
   m.send({ type: 'retry', attempt: 1 })
   assert.deepEqual(m.state, { kind: 'reconnecting', attempt: 1 })
   m.send({ type: 'firstChunk' })
-  m.send({ type: 'streamClosed' })
+  m.send({ type: 'complete' })
   m.send({ type: 'retry', attempt: 2 })
-  assert.equal(m.state.kind, 'streaming')
+  assert.equal(m.state.kind, 'done')
 })
 test('只在公开状态变化时同步通知订阅者', () => {
   const m = createStateMachine()
@@ -55,9 +51,8 @@ test('只在公开状态变化时同步通知订阅者', () => {
   m.send({ type: 'connect' })
   m.send({ type: 'firstChunk' })
   m.send({ type: 'firstChunk' })
-  m.send({ type: 'streamClosed' })
   assert.deepEqual(seen, ['connecting', 'streaming'])
-  m.send({ type: 'queueDrained' })
+  m.send({ type: 'complete' })
   assert.deepEqual(seen, ['connecting', 'streaming', 'done'])
 })
 test('取消订阅和销毁后不再通知', () => {

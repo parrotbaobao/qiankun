@@ -512,7 +512,6 @@ function handleSubmit(val?: string) {
     .map(m => ({ role: m.from === 'user' ? 'user' : 'assistant', content: m.content }))
 
   const { abort } = createChatStream({
-    typewriter: false, // 使用 MarkdownCard 内置动画，避免双重打字
     maxRetries: 1,
     onReconnecting(attempt) {
       const last = messages.value.at(-1)
