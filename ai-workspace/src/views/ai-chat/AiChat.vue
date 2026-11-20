@@ -220,11 +220,11 @@ function autoResize() {
 let abortFn: (() => void) | null = null
 const chatState = shallowRef<ChatState>({ kind: 'idle' })
 const phase = computed(() => chatState.value.kind)
-const reconnectAttempt = ref(0)
 const phaseLabel = computed(() => {
-    switch (phase.value) {
+    const state = chatState.value
+    switch (state.kind) {
         case 'connecting': return '连接中…'
-        case 'reconnecting': return `重连中 (${reconnectAttempt.value})`
+        case 'reconnecting': return `重连中 (${state.attempt})`
         case 'streaming': return '生成中'
         case 'error': return '出错'
         case 'aborted': return '已停止'
@@ -366,8 +366,7 @@ function sendToAI(text: string) {
                 metricsAcc.ttftMs = elapsedMs
             }
         },
-        onReconnecting(attempt) {
-            reconnectAttempt.value = attempt
+        onReconnecting() {
             if (!streamingMessage.value) return
             streamingMessage.value.loading = true
             streamingMessage.value.content = ''
@@ -380,7 +379,6 @@ function sendToAI(text: string) {
             streamingMessage.value.loading = false
             streamingMessage.value.status = undefined
             streamingMessage.value.content = value
-            reconnectAttempt.value = 0
             if (!document.hidden) scrollToBottom()
         },
         onError(err: unknown) {

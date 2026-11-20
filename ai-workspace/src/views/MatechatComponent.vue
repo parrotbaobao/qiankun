@@ -243,8 +243,10 @@ function applyStateToMessage(state: ChatState, message: ChatMsg) {
   }
 }
 
-function handleRoundState(round: ActiveRound, state: ChatState) {
-  if (!isCurrentRound(round)) return
+// 同步映射消息状态；结束时稍后释放轮次，让本轮 onError/onDone 仍能完成更新。
+watch(roundState, state => {
+  const round = activeRound
+  if (!round) return
   applyStateToMessage(state, round.message)
 
   if (state.kind === 'done' || state.kind === 'error' || state.kind === 'aborted') {
@@ -252,27 +254,18 @@ function handleRoundState(round: ActiveRound, state: ChatState) {
       if (isCurrentRound(round)) activeRound = null
     })
   }
-}
-
-// 状态机直接更新 roundState；同步监听用于保存消息状态及完成本轮收尾。
-// 同步执行确保首段正文写入前关闭 loading，终态在 onDone/onError 前映射到消息。
-watch(roundState, state => {
-  const round = activeRound
-  if (round) handleRoundState(round, state)
 }, { flush: 'sync' })
 
-function cancelActiveRound({ notify = true }: { notify?: boolean } = {}) {
+// 切换对话或离开页面时，先解除消息绑定，再取消请求，避免旧回调更新页面。
+function discardActiveRound() {
   const round = activeRound
   if (!round) return
-  if (!notify) activeRound = null
+  activeRound = null
   round.abort?.()
-  if (!notify) roundState.value = { kind: 'idle' }
+  roundState.value = { kind: 'idle' }
 }
 
-// ── 生命周期：组件销毁时清理 ──────────────────────────────────────────────────
-onBeforeUnmount(() => {
-  cancelActiveRound({ notify: false })
-})
+onBeforeUnmount(discardActiveRound)
 
 // ── 滚动到底部 ────────────────────────────────────────────────────────────────
 // 用 nextTick 等 Vue 把新消息渲染到 DOM 后再滚，否则 scrollHeight 还是旧值
@@ -285,7 +278,7 @@ function scrollToBottom() {
 // ── 开启新对话 ────────────────────────────────────────────────────────────────
 // 先取消当前流式请求，再清空所有状态
 function newConversation() {
-  cancelActiveRound({ notify: false })
+  discardActiveRound()
   roundState.value = { kind: 'idle' }
   messages.value = []
   inputText.value = ''
@@ -360,7 +353,7 @@ function submitDislike(idx: number) {
 // 停止只由明确的取消操作触发，不与重复发送共用分支。
 function handleStop() {
   if (!isBusy.value) return
-  cancelActiveRound()
+  activeRound?.abort?.()
 }
 
 // ── 核心函数：发送消息 ──────────────────────────────────────────────────────

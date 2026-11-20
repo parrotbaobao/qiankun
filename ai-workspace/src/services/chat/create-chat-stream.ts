@@ -37,8 +37,7 @@ export interface ChatStream {
 const DEFAULT_URL = 'http://localhost:3200/v1/chat/completions'
 
 export function createChatStream(options: ChatStreamOptions): ChatStream {
-  const sm = createStateMachine(options.state)
-  const adapter = openAIStreamAdapter
+  const stateMachine = createStateMachine(options.state)
   let firstChunk = true
   let protocolCompleted = false
   let source: SseSource | null = null
@@ -46,19 +45,20 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
   // 请求层只累计文本，展示节奏交给组件。
   let fullText = ''
 
-  const cleanup = () => {
+  // 本接口以业务完成标记结束接收；完成、失败、停止后主动关闭连接并释放状态机。
+  const closeStream = () => {
     source?.abort()
-    sm.dispose()
+    stateMachine.dispose()
   }
 
   const fail = (error: unknown) => {
-    if (sm.state.kind === 'aborted' || sm.state.kind === 'done' || sm.state.kind === 'error') return
-    sm.send({ type: 'error', error })
-    cleanup()
+    if (stateMachine.state.kind === 'aborted' || stateMachine.state.kind === 'done' || stateMachine.state.kind === 'error') return
+    stateMachine.send({ type: 'error', error })
+    closeStream()
     options.onError?.(error)
   }
 
-  sm.send({ type: 'connect' })
+  stateMachine.send({ type: 'connect' })
 
   source = createSseSource(
     {
@@ -69,11 +69,11 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
     },
     {
       onMessage(data, elapsedMs) {
-        if (protocolCompleted || sm.state.kind === 'error' || sm.state.kind === 'aborted') return
+        if (protocolCompleted || stateMachine.state.kind === 'error' || stateMachine.state.kind === 'aborted') return
         options.onFrame?.(data, elapsedMs)
         let event: StreamProtocolEvent
         try {
-          event = adapter.parse(data)
+          event = openAIStreamAdapter.parse(data)
         } catch (error) {
           fail(error)
           return
@@ -85,14 +85,14 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
             fullText += event.text
             if (firstChunk) {
               firstChunk = false
-              sm.send({ type: 'firstChunk' })
+              stateMachine.send({ type: 'firstChunk' })
             }
             options.onText(fullText)
             break
           case 'complete':
             protocolCompleted = true
-            sm.send({ type: 'complete' })
-            cleanup()
+            stateMachine.send({ type: 'complete' })
+            closeStream()
             options.onDone?.()
             break
           case 'error':
@@ -109,7 +109,7 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
       onError: fail,
       onRetry(attempt) {
         protocolCompleted = false
-        sm.send({ type: 'retry', attempt })
+        stateMachine.send({ type: 'retry', attempt })
         fullText = ''
         firstChunk = true
         options.onReconnecting?.(attempt)
@@ -119,9 +119,9 @@ export function createChatStream(options: ChatStreamOptions): ChatStream {
 
   return {
     abort() {
-      if (sm.state.kind === 'done' || sm.state.kind === 'error' || sm.state.kind === 'aborted') return
-      sm.send({ type: 'abort' })
-      cleanup()
+      if (stateMachine.state.kind === 'done' || stateMachine.state.kind === 'error' || stateMachine.state.kind === 'aborted') return
+      stateMachine.send({ type: 'abort' })
+      closeStream()
     },
   }
 }
