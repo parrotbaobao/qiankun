@@ -158,7 +158,7 @@ import '@matechat/core/Bubble/index.css'
 import '@matechat/core/Input/index.css'
 import '@matechat/core/MarkdownCard/index.css'
 
-import { computed, onBeforeUnmount, reactive, ref, nextTick } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, shallowRef, watch, nextTick } from 'vue'
 import { createChatStream, type ChatState } from '@/services/chat.service'  // 项目内封装的 SSE 流式请求工具
 
 // ── 类型定义 ──────────────────────────────────────────────────────────────────
@@ -189,7 +189,7 @@ const aiAvatar = { displayName: 'AI', isRound: true, width: 32, height: 32 }
 // ── 响应式状态 ────────────────────────────────────────────────────────────────
 const bodyRef = ref<HTMLElement | null>(null)    // 消息区 DOM 引用，用于滚动控制
 const inputText = ref('')                          // 输入框当前文字
-const roundState = ref<ChatState>({ kind: 'idle' }) // 当前一轮生成的状态机快照
+const roundState = shallowRef<ChatState>({ kind: 'idle' }) // 页面和状态机共用的响应式状态
 const isBusy = computed(() => ['connecting', 'streaming', 'reconnecting'].includes(roundState.value.kind))
 const messages = ref<ChatMsg[]>([])               // 全部消息列表（用户+AI交替）
 const copiedIdx = ref<number | null>(null)         // 当前"已复制"的消息索引，1.5s 后清空
@@ -245,7 +245,6 @@ function applyStateToMessage(state: ChatState, message: ChatMsg) {
 
 function handleRoundState(round: ActiveRound, state: ChatState) {
   if (!isCurrentRound(round)) return
-  roundState.value = state
   applyStateToMessage(state, round.message)
 
   if (state.kind === 'done' || state.kind === 'error' || state.kind === 'aborted') {
@@ -254,6 +253,13 @@ function handleRoundState(round: ActiveRound, state: ChatState) {
     })
   }
 }
+
+// 状态机直接更新 roundState；同步监听用于保存消息状态及完成本轮收尾。
+// 同步执行确保首段正文写入前关闭 loading，终态在 onDone/onError 前映射到消息。
+watch(roundState, state => {
+  const round = activeRound
+  if (round) handleRoundState(round, state)
+}, { flush: 'sync' })
 
 function cancelActiveRound({ notify = true }: { notify?: boolean } = {}) {
   const round = activeRound
@@ -396,9 +402,7 @@ function startReply() {
       temperature: 0.7,
       max_tokens: 8192,
     },
-    onStateChange(state) {
-      handleRoundState(round, state)
-    },
+    state: roundState,
     onText(value) {
       if (!isCurrentRound(round)) return
       targetMessage.content = value

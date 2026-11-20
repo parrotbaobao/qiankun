@@ -1,3 +1,4 @@
+import type { ShallowRef } from 'vue'
 import { openAIStreamAdapter, type ChatUsage, type StreamProtocolEvent } from './openai-stream-adapter'
 import { createSseSource, type SseSource } from './sse-source'
 import { createStateMachine, type ChatState } from './state-machine'
@@ -24,7 +25,8 @@ export interface ChatStreamOptions {
   onText: (full: string) => void
   onDone?: () => void
   onError?: (err: unknown) => void
-  onStateChange?: (state: ChatState) => void
+  /** 页面持有的响应式状态；状态机直接更新，不通过状态回调中转。 */
+  state?: ShallowRef<ChatState>
 }
 
 export interface ChatStream {
@@ -35,22 +37,17 @@ export interface ChatStream {
 const DEFAULT_URL = 'http://localhost:3200/v1/chat/completions'
 
 export function createChatStream(options: ChatStreamOptions): ChatStream {
-  const sm = createStateMachine()
+  const sm = createStateMachine(options.state)
   const adapter = openAIStreamAdapter
   let firstChunk = true
   let protocolCompleted = false
   let source: SseSource | null = null
-
-  const unsubscribeState = options.onStateChange
-    ? sm.subscribe(options.onStateChange)
-    : null
 
   // 请求层只累计文本，展示节奏交给组件。
   let fullText = ''
 
   const cleanup = () => {
     source?.abort()
-    unsubscribeState?.()
     sm.dispose()
   }
 

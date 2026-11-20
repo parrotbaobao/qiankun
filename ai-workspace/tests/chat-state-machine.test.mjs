@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { shallowRef, computed, watch } from 'vue'
 import { createStateMachine } from '../src/services/chat/state-machine.ts'
 
 test('忽略空闲时非法事件，重复 connect 不打断接收', () => {
@@ -42,29 +43,33 @@ test('重试次数有效且业务完成后禁止重试', () => {
   m.send({ type: 'retry', attempt: 2 })
   assert.equal(m.state.kind, 'done')
 })
-test('只在公开状态变化时同步通知订阅者', () => {
-  const m = createStateMachine()
+test('状态直接同步到 Vue ref，按钮计算和消息映射可及时更新', () => {
+  const state = shallowRef({ kind: 'idle' })
+  const m = createStateMachine(state)
+  const isBusy = computed(() => ['connecting', 'streaming', 'reconnecting'].includes(state.value.kind))
   const seen = []
-  m.subscribe(s => seen.push(s.kind))
+  const stop = watch(state, s => seen.push(s.kind), { flush: 'sync' })
   m.send({ type: 'connect' })
-  assert.deepEqual(seen, ['connecting'])
+  assert.equal(isBusy.value, true)
   m.send({ type: 'connect' })
   m.send({ type: 'firstChunk' })
   m.send({ type: 'firstChunk' })
-  assert.deepEqual(seen, ['connecting', 'streaming'])
   m.send({ type: 'complete' })
+  assert.equal(isBusy.value, false)
   assert.deepEqual(seen, ['connecting', 'streaming', 'done'])
+  stop()
 })
-test('取消订阅和销毁后不再通知', () => {
-  const m = createStateMachine()
-  let count = 0
-  const off = m.subscribe(() => count++)
-  off()
+test('销毁后不再更新响应式状态，新的一轮可以从空闲重新开始', () => {
+  const state = shallowRef({ kind: 'idle' })
+  const m = createStateMachine(state)
   m.send({ type: 'connect' })
-  assert.equal(count, 0)
-  m.subscribe(() => count++)
   m.dispose()
   m.send({ type: 'firstChunk' })
-  assert.equal(count, 0)
-  assert.equal(m.state.kind, 'connecting')
+  assert.equal(state.value.kind, 'connecting')
+  const next = createStateMachine(state)
+  assert.equal(state.value.kind, 'idle')
+  next.send({ type: 'connect' })
+  next.send({ type: 'abort' })
+  m.send({ type: 'error', error: new Error('late') })
+  assert.equal(state.value.kind, 'aborted')
 })

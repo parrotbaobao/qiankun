@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef } from 'vue'
 import IconBolt from '@/components/icons/IconBolt.vue'
 import IconChat from '@/components/icons/IconChat.vue'
 import IconStopSquare from '@/components/icons/IconStopSquare.vue'
@@ -218,7 +218,8 @@ function autoResize() {
 
 // ── send & stream ─────────────────────────────────────────────────────────────
 let abortFn: (() => void) | null = null
-const phase = ref<ChatState['kind']>('idle')
+const chatState = shallowRef<ChatState>({ kind: 'idle' })
+const phase = computed(() => chatState.value.kind)
 const reconnectAttempt = ref(0)
 const phaseLabel = computed(() => {
     switch (phase.value) {
@@ -372,9 +373,7 @@ function sendToAI(text: string) {
             streamingMessage.value.content = ''
             streamingMessage.value.status = 'RECONNECTING'
         },
-        onStateChange(s) {
-            phase.value = s.kind
-        },
+        state: chatState,
         body,
         onText(value) {
             if (!streamingMessage.value) return

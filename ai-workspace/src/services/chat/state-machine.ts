@@ -1,3 +1,5 @@
+import { shallowRef, type ShallowRef } from 'vue'
+
 export type ChatState =
   | { kind: 'idle' }
   | { kind: 'connecting' }
@@ -17,8 +19,6 @@ export type ChatEvent =
 
 export interface StateMachine {
   readonly state: ChatState
-  /** 订阅所有状态变化（无过滤） */
-  subscribe(fn: (s: ChatState) => void): () => void
   send(ev: ChatEvent): void
   dispose(): void
 }
@@ -53,35 +53,21 @@ export function transition(state: ChatState, event: ChatEvent): ChatState {
   }
 }
 
-/** 每轮请求创建一个实例；终态不复用，新请求创建新状态机。 */
-export function createStateMachine(): StateMachine {
-  let state: ChatState = { kind: 'idle' }
+/** 每轮创建一个状态机；页面可传入响应式状态，转换后由 Vue 自动更新界面。 */
+export function createStateMachine(
+  stateRef: ShallowRef<ChatState> = shallowRef<ChatState>({ kind: 'idle' }),
+): StateMachine {
+  stateRef.value = { kind: 'idle' }
   let disposed = false
-  const listeners = new Set<(state: ChatState) => void>()
-
-  const subscribe = (listener: (state: ChatState) => void) => {
-    if (!disposed) listeners.add(listener)
-    return () => { listeners.delete(listener) }
-  }
 
   return {
-    get state() { return state },
-    subscribe,
+    get state() { return stateRef.value },
     send(event) {
       if (disposed) return
-      const previous = state
-      state = transition(state, event)
-      if (state === previous) return
-
-      // 订阅者负责同步页面；状态事件由协调层发送。
-      const published = state
-      for (const listener of [...listeners]) {
-        if (listeners.has(listener)) listener(published)
-      }
+      stateRef.value = transition(stateRef.value, event)
     },
     dispose() {
       disposed = true
-      listeners.clear()
     },
   }
 }
